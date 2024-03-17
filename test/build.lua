@@ -1,27 +1,41 @@
+-- do some function stuff here perhaps?
+-- identify the compiler?
+-- locate dependencies?
 local function foo()
-	return "value"
+	return "cc"
 end
 
 return {
-	text = "Some target",
-	number = 1,
-	func = foo(),
-	bool = true,
-	float = 2.0,
-
-	tabler = { nested = "foo" }, -- TODO: Parse nested tables.
-	nest = {
-		big_nest = true,
-		nest_two = {
-			bar = "barstring",
-			final = {
-				final_baz = 1.0,
-			},
-			-- 	"foo",
-			-- 	"bar",
-			-- },
-		},
+	-- compiler = "cc",
+	compiler = foo,
+	executable = "remake_test",
+	-- This will be prefix'd with -D
+	build_defines = {
+		"DEBUG",
 	},
-
-	-- { field = "foobar" }, -- TODO: Parse anonymous tables.
+	-- CLFAGS will be apppended as is for now
+	cflags = {
+		"-ggdb",
+		"-fPIC",
+	},
+	-- As it says on the tin.
+	src_files = {
+		"./src/test.c",
+	},
+	-- Directories that could contain header files to include.
+	include_dir = {
+		"./hdr",
+		"./temp",
+	},
+	-- Libraries to link against!
+	include_libs = {
+		"pthread",
+		"mimalloc",
+	},
+	-- Directory to install the binary to after the fact?
+	install = {
+		directory = "./bin",
+	},
+	-- Directory to put build files in? Maybe .o files?
+	build_dir = "./build",
 }

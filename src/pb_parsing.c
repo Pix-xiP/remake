@@ -54,6 +54,7 @@ void parse_build_file(lua_State *state, char *prefix, pb_stack *stack, CmdList *
   }
 }
 
+// Parse the values inside the table.
 void parse_kv_table(lua_State *state, char *prefix, pb_stack *stack) {
   lua_pushnil(state);
   const char *key, *value;
@@ -80,27 +81,19 @@ void parse_kv_table(lua_State *state, char *prefix, pb_stack *stack) {
       if (lua_type(state, -1) == LUA_TBOOLEAN) {
         value = lua_toboolean(state, -1) ? "on" : "off";
       } else {
-        if ((strcmp(key, "color") == 0 || strcmp(key, "border_color") == 0) &&
-            lua_type(state, -1) == LUA_TNUMBER) {
-          u32 number = lua_tonumber(state, -1);
-          snprintf(hex, 16, "0x%x", number);
-          value = hex;
-        } else {
-          value = lua_tostring(state, -1);
-        }
+        value = lua_tostring(state, -1);
       }
-
-      u32 kv_pair_len =
-          (prefix ? strlen(prefix) + 1 : 0) + strlen(value) + strlen(key) + 5;
-
-      char kv_pair[kv_pair_len];
-      if (prefix) {
-        snprintf(kv_pair, kv_pair_len, "%s.%s=%s", prefix, key, value);
-      } else {
-        snprintf(kv_pair, kv_pair_len, "%s=%s", key, value);
-      }
-      stack_push(stack, kv_pair);
     }
-    lua_pop(state, 1);
+
+    u32 kv_pair_len = (prefix ? strlen(prefix) + 1 : 0) + strlen(value) + strlen(key) + 5;
+
+    char kv_pair[kv_pair_len];
+    if (prefix) {
+      snprintf(kv_pair, kv_pair_len, "%s.%s=%s", prefix, key, value);
+    } else {
+      snprintf(kv_pair, kv_pair_len, "%s=%s", key, value);
+    }
+    stack_push(stack, kv_pair);
   }
+  lua_pop(state, 1);
 }

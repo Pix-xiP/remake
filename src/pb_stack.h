@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pix.h"
 #include "pix_logging.h"
-#include "pix_types.h"
 
 #define m_clone(dst, src)                                                                \
   {                                                                                      \
