@@ -3,6 +3,7 @@
 #include <lualib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "pb_parsing.h"
 #define PIX_IMPLEMENTATION
@@ -54,6 +55,7 @@ i32 alloc_and_cpy_string(void **loc, const char *str) {
 }
 
 void parse_nested_table(lua_State *state) {
+  return; // PIXTODO: Remove this when tackling the rest lmao.
   lua_pushvalue(state, -1);
   lua_pushnil(state);
   while (lua_next(state, -2) != 0) {
@@ -122,7 +124,6 @@ bool parse_build_defines(lua_State *L) {
       p_err("[LUA]: defines must be 'string'");
       return true;
     }
-    p_log("Appending: %s", lua_tostring(L, -1));
     pix_da_append(&pb.cflags, "-D");
     pix_da_append(&pb.cflags, lua_tostring(L, -1));
     lua_pop(L, 1); // Pop value from stack
@@ -141,14 +142,13 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
   lua_pushnil(L);
   while (lua_next(L, -2) != 0) {
     if (lua_type(L, -1) != LUA_TSTRING) {
-      p_log("Type was: %s", luat_to_string(lua_type(L, -1)));
-      p_err("[LUA]: defines must be 'string'");
+      p_err("[LUA]: defines must be 'string'. Found: '%s'",
+            luat_to_string(lua_type(L, -1)));
       return true;
     }
     if (prefix)
       pix_da_append(da, prefix);
 
-    p_log("Appending: %s", lua_tostring(L, -1));
     pix_da_append(da, lua_tostring(L, -1));
     lua_pop(L, 1); // Pop value from stack
   }
@@ -156,8 +156,6 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
 
   return false;
 }
-
-#include <sys/wait.h>
 
 i32 run_build() {
   pid_t cpid = fork();
@@ -168,34 +166,29 @@ i32 run_build() {
 
   if (cpid == 0) {
     DynamicArray args = {0};
-    for (size_t i = 0; i < pb.files.count; i++)
-      fprintf(stdout, "FILES: %s ", pb.files.items[i]);
-    printf("\n");
 
     pix_da_append(&args, pb.compiler);
+
     if (pb.exec_name) {
       pix_da_append(&args, "-o");
       pix_da_append(&args, pb.exec_name);
     }
 
-    p_log("LEN: %lu", pix_strlen(pb.files.items[0]));
     pix_da_append_multi(&args, pb.libs.items, pb.libs.count);
     pix_da_append_multi(&args, pb.cflags.items, pb.cflags.count);
     pix_da_append_multi(&args, pb.ldflags.items, pb.ldflags.count);
     pix_da_append_multi(&args, pb.inc_dirs.items, pb.inc_dirs.count);
     pix_da_append_multi(&args, pb.files.items, pb.files.count);
-    print_pb();
+    // print_pb();
 
     // Ready to run, add NULL term.
     pix_da_append(&args, NULL);
 
-    p_log("Printing the args list");
+    p_log("Running the following command:");
     for (size_t i = 0; i < args.count; i++)
       fprintf(stdout, "%s ", args.items[i]);
     printf("\n");
-    // char *__args[] = {"cc", "-l",    "pthread",      "-l", "mimalloc",
-    //                   "-D", "DEBUG", "./src/test.c", NULL};
-    // if (execvp(__args[0], (char *const *)__args) < 0) {
+
     if (execvp(args.items[0], (char *const *)args.items) < 0) {
       p_err("Could not exec child process: %s", strerror(errno));
       exit(1);
@@ -216,7 +209,7 @@ i32 main(i32 argc, char **argv) {
 
   // Load in the build file. || call lua, expect 1 result
   if (luaL_loadfile(L, "./build.lua") || lua_pcall(L, 0, 1, 0)) {
-    printf("Error: %s\n", lua_tostring(L, -1));
+    p_err("Error: %s", lua_tostring(L, -1));
     lua_pop(L, 1); // Pop error message from the stack
   } else {
     // ensure data we get is a table!
@@ -228,7 +221,7 @@ i32 main(i32 argc, char **argv) {
     while (lua_next(L, -2) != 0) {
       // key is at idx -2 and value at -1
       if (lua_type(L, -2) == LUA_TSTRING) {
-        p_dbg("This is a string'd key: %s", lua_tostring(L, -2));
+        // p_dbg("This is a string'd key: %s", lua_tostring(L, -2));
         if (pix_strcmp("compiler", lua_tostring(L, -2)) == 0) {
           if (parse_compiler(L))
             return 1;
@@ -249,13 +242,12 @@ i32 main(i32 argc, char **argv) {
             return 1;
         }
       } else {
-        p_log("This is a number'd key: %lld", lua_tointeger(L, -2));
+        // p_dbg("This is a number'd key: %lld", lua_tointeger(L, -2));
       }
-      p_log("With a value of: %s", luat_to_string(lua_type(L, -1)));
+      // p_dbg("With a value of: %s", luat_to_string(lua_type(L, -1)));
       if (lua_type(L, -1) == LUA_TTABLE)
         parse_nested_table(L);
 
-      p_log("Last while pop");
       // Unless something gets added, this will always handle popping the last value.
       lua_pop(L, 1); // Pop total table from stack
     }

@@ -65,123 +65,122 @@
 /* #define CLRLINE "\r\e[K" // or "\e[1K\r" */
 
 // New hack to get the filename I found :D
-#define __FILENAME__                                                           \
-  (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 // Could pull out errno here with this found in syslog:
 #define err_to_str() (errno == 0 ? "" : strerror(errno))
 
 // Log functions
-#define p_emrg(msg, ...)                                                       \
-  do {                                                                         \
-    fprintf(P_LOG_OUT,                                                         \
-            RED "[!!!]: "                                                      \
-                "%s (%s:%d) " NORM msg YELLOW " errno: %s\n" NORM,             \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__, err_to_str());        \
+#define p_emrg(msg, ...)                                                                 \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT,                                                                   \
+            RED "[!!!]: "                                                                \
+                "%s (%s:%d) " NORM msg YELLOW " errno: %s\n" NORM,                       \
+            __func__, __FILE__, __LINE__, ##__VA_ARGS__, err_to_str());                  \
   } while (0)
 
-#define p_alert(msg, ...)                                                      \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, PURPLE "[A!]: " NORM msg "\n", ##__VA_ARGS__);          \
+#define p_alert(msg, ...)                                                                \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, PURPLE "[A!]: " NORM msg "\n", ##__VA_ARGS__);                    \
   } while (0)
 
-#define p_crit(msg, ...)                                                       \
-  do {                                                                         \
-    fprintf(P_LOG_OUT,                                                         \
-            RED "[!!]: "                                                       \
-                "%s (%s:%d) " NORM msg YELLOW " errno: %s\n" NORM,             \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__, err_to_str());        \
+#define p_crit(msg, ...)                                                                 \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT,                                                                   \
+            RED "[!!]: "                                                                 \
+                "%s (%s:%d) " NORM msg YELLOW " errno: %s\n" NORM,                       \
+            __func__, __FILE__, __LINE__, ##__VA_ARGS__, err_to_str());                  \
   } while (0)
 
-#define p_err(msg, ...)                                                        \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, RED "[!]: " NORM msg "\n", ##__VA_ARGS__);              \
+#define p_err(msg, ...)                                                                  \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, RED "[!]: " NORM msg "\n", ##__VA_ARGS__);                        \
   } while (0)
 
-#define p_warn(msg, ...)                                                       \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, BLUE "[W]: " NORM msg "\n", ##__VA_ARGS__);             \
+#define p_warn(msg, ...)                                                                 \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, BLUE "[W]: " NORM msg "\n", ##__VA_ARGS__);                       \
   } while (0)
 
-#define p_success(msg, ...)                                                    \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, GREEN "[S]: " NORM msg "\n", ##__VA_ARGS__);            \
+#define p_success(msg, ...)                                                              \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, GREEN "[S]: " NORM msg "\n", ##__VA_ARGS__);                      \
   } while (0)
 
-#define p_info(msg, ...)                                                       \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, CYAN "[+]: " NORM msg "\n", ##__VA_ARGS__);             \
+#define p_info(msg, ...)                                                                 \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, CYAN "[+]: " NORM msg "\n", ##__VA_ARGS__);                       \
   } while (0)
 
 // The ability to pull out lines and func can be extended to others if required
-#define p_dbg(msg, ...)                                                        \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, GREY "[D]: " NORM msg "\n", ##__VA_ARGS__);             \
+#define p_dbg(msg, ...)                                                                  \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, GREY "[D]: " NORM msg "\n", ##__VA_ARGS__);                       \
   } while (0)
 
-#define p_dbgv(msg, ...)                                                       \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, GREY "[D]: %s (%s:%d) " NORM msg "\n", __func__,        \
-            __FILE__, __LINE__, ##__VA_ARGS__);                                \
+#define p_dbgv(msg, ...)                                                                 \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, GREY "[D]: %s (%s:%d) " NORM msg "\n", __func__, __FILE__,        \
+            __LINE__, ##__VA_ARGS__);                                                    \
   } while (0)
 
-#define p_log(msg, ...)                                                        \
-  do {                                                                         \
-    fprintf(P_LOG_OUT, "[>]: " msg "\n", ##__VA_ARGS__);                       \
+#define p_log(msg, ...)                                                                  \
+  do {                                                                                   \
+    fprintf(P_LOG_OUT, "[>]: " msg "\n", ##__VA_ARGS__);                                 \
   } while (0)
 
 // Log level controls -- Syslog style
 //
 #ifndef DEBUG
 #undef p_dbg
-#define p_dbg(msg, ...)                                                        \
-  do {                                                                         \
+#define p_dbg(msg, ...)                                                                  \
+  do {                                                                                   \
   } while (0)
 #undef p_dbgv
-#define p_dbgv(msg, ...)                                                       \
-  do {                                                                         \
+#define p_dbgv(msg, ...)                                                                 \
+  do {                                                                                   \
   } while (0)
 #endif
 
 #if P_LOG_LEVEL < INFO
 #undef p_info
-#define p_dbg(msg, ...)                                                        \
-  do {                                                                         \
+#define p_dbg(msg, ...)                                                                  \
+  do {                                                                                   \
   } while (0)
 #endif
 
 #if P_LOG_LEVEL < SUCCESS
 #undef p_p_success
-#define p_success(msg, ...)                                                    \
-  do {                                                                         \
+#define p_success(msg, ...)                                                              \
+  do {                                                                                   \
   } while (0)
 #endif
 
 #if P_LOG_LEVEL < WARN
 #undef p_warn
-#define p_warn(msg, ...)                                                       \
-  do {                                                                         \
+#define p_warn(msg, ...)                                                                 \
+  do {                                                                                   \
   } while (0)
 #endif
 
 #if P_LOG_LEVEL < ERR
 #undef p_err
-#define p_err(msg, ...)                                                        \
-  do {                                                                         \
+#define p_err(msg, ...)                                                                  \
+  do {                                                                                   \
   } while (0)
 #endif
 
 #if P_LOG_LEVEL < ALERT
 #undef p_alert
-#define p_alert(msg, ...)                                                      \
-  do {                                                                         \
+#define p_alert(msg, ...)                                                                \
+  do {                                                                                   \
   } while (0)
 #endif
 
 #if P_LOG_LEVEL < EMERG
 #undef p_emrg
-#define p_emrg(msg, ...)                                                       \
-  do {                                                                         \
+#define p_emrg(msg, ...)                                                                 \
+  do {                                                                                   \
   } while (0)
 #endif
 
@@ -207,10 +206,10 @@
 #define GREY
 #endif
 
-#define unreachable()                                                          \
-  do {                                                                         \
-    p_emrg("UNREACHABLE CONTENT REACHED");                                     \
-    exit(119);                                                                 \
+#define unreachable()                                                                    \
+  do {                                                                                   \
+    p_emrg("UNREACHABLE CONTENT REACHED");                                               \
+    exit(119);                                                                           \
   } while (0)
 
 #endif
