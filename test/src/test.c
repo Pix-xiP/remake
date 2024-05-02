@@ -5,6 +5,8 @@
 #include "../../mimalloc/include/mimalloc.h"
 #include <pthread.h>
 
+#include "../hdr/test.h"
+
 int main(void) {
   printf("Hello World\n");
 
@@ -17,7 +19,11 @@ int main(void) {
   printf("Only print if DEBUG defined!\n");
 #endif
 
+  extend_function(10);
+  extend_function(2);
+
   test[100] = '\0';
   fprintf(stdout, "%s\n", test);
+  // fprintf(stdout, "Testing something new for incremental!");
   return 0;
 }

@@ -22,9 +22,10 @@ return {
 	-- As it says on the tin.
 	src_files = {
 		"./src/test.c",
+		"./src/extended.c",
 	},
 	-- Directories that could contain header files to include.
-	include_dir = {
+	include_dirs = {
 		"./hdr",
 		"./temp",
 	},
@@ -33,10 +34,6 @@ return {
 		"pthread",
 		"mimalloc",
 	},
-	-- Directory to install the binary to after the fact?
-	install = {
-		directory = "./bin",
-	},
 	-- None, Basic, Default, Extreme, debug, debug_optimisied, size
 	optimisation_level = "default",
 
@@ -44,4 +41,8 @@ return {
 	-- UNIMPLEMENTED YET
 	-- Directory to put build files in? Maybe .o files?
 	build_dir = "./build",
+	-- Directory to install the binary to after the fact?
+	install = {
+		directory = "./bin",
+	},
 }
