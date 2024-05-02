@@ -5,48 +5,15 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include "pb_file_checker.h"
+#include "pb_main.h"
 #include "pb_parsing.h"
+
 #define PIX_IMPLEMENTATION
 #include "pix.h"
+
 #include "pix_scuffed_da.h"
 #include "src/pix_logging.h"
-
-// v1 -- Makes this smarter :>
-// This will just handle C for the time being
-typedef enum Optimisation {
-  none = 0,
-  debug,
-  debug_optimised,
-  basic,
-  regular,
-  size,
-  extreme,
-} Optimisation;
-
-typedef struct PB_Builder {
-
-  const char *compiler;
-  const char *build_path;
-  const char *name;
-
-  DynamicArray libs;
-  DynamicArray files;
-  DynamicArray cflags;
-  DynamicArray defines;
-  DynamicArray ldflags;
-  DynamicArray inc_dirs;
-
-} PB_Builder;
-
-typedef struct PB_Context {
-  const char *install_dir;
-  const char *build_dir;
-
-  Optimisation op_lvl;
-
-  bool is_exe;
-  bool is_lib;
-} PB_Context;
 
 // PIXTODO: Instantiate in main setup and pass around pointer?
 PB_Builder pb = {0};
@@ -68,6 +35,7 @@ void print_pb() {
   printf("Libs\n");
   print_da(pb.libs.count, pb.libs.items);
   printf("Include Dirs\n");
+  print_da(pb.inc_dirs.count, pb.inc_dirs.items);
 }
 
 void print_pc() {
@@ -116,7 +84,7 @@ i32 parse_opt_level(lua_State *L) {
     return 1;
   }
 
-  p_log("Optimisation Level: %s", val);
+  p_info("Optimisation Level: %s", val);
   return 0;
 }
 
@@ -202,77 +170,140 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
   return false;
 }
 
-i32 run_build() {
-  pid_t cpid = fork();
-  if (cpid < 0) {
-    p_err("Could not fork child process: %s", strerror(errno));
-    return 1;
+void add_optimisation_flags() {
+  // What other options by default?
+  switch (pc.op_lvl) {
+  case basic:
+    pix_da_append(&pb.cflags, "-O1");
+    break;
+  case debug:
+    pix_da_append(&pb.cflags, "-g3");
+    break;
+  case debug_optimised:
+    pix_da_append(&pb.cflags, "-g2");
+    pix_da_append(&pb.cflags, "-Og");
+    break;
+  case size:
+    pix_da_append(&pb.cflags, "-Os");
+    break;
+  case regular:
+    pix_da_append(&pb.cflags, "-O2");
+    break;
+  case extreme:
+    pix_da_append(&pb.cflags, "-Ofast");
+    break;
+  case none:
+  default:
+    break;
   }
+}
 
-  if (cpid == 0) {
-    DynamicArray args = {0};
+i32 exec_fork(DynamicArray *da) {
+  i32 status;
+  pid_t pid = fork();
+  if (pid == 0) { // Child Run
+    if (execvp(da->items[0], (char *const *)da->items) < 0) {
+      p_err("Could not exec child process: %s", strerror(errno));
+      exit(1);
+    }
+  } else if (pid < 0) { // Error
+    p_err("Could not fork child process: %s", strerror(errno));
+    exit(1);
+  } else { // Parent
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+      p_err("Failing in compiliation");
+      exit(1);
+    }
+  }
+  return status;
+}
 
-    // Some default includes
-    pix_da_append(&pb.inc_dirs, "-I.");
-    pix_da_append(&pb.inc_dirs, "-I..");
+i32 run_build() {
+  DynamicArray args = {0};
+  bool rebuild_exe = false;
 
-    // PIXNOTE: Move to a function?
-    // What other options by default?
-    switch (pc.op_lvl) {
-    case basic:
-      pix_da_append(&pb.cflags, "-O1");
-      break;
-    case debug:
-      pix_da_append(&pb.cflags, "-g3");
-      break;
-    case debug_optimised:
-      pix_da_append(&pb.cflags, "-g2");
-      pix_da_append(&pb.cflags, "-Og");
-      break;
-    case size:
-      pix_da_append(&pb.cflags, "-Os");
-      break;
-    case regular:
-      pix_da_append(&pb.cflags, "-O2");
-      break;
-    case extreme:
-      pix_da_append(&pb.cflags, "-Ofast");
-      break;
-    case none:
-    default:
-      break;
+  // Some default includes
+  pix_da_append(&pb.inc_dirs, "-I.");
+  pix_da_append(&pb.inc_dirs, "-I..");
+
+  // Add optimisation flags
+  add_optimisation_flags();
+
+  // Add the compiler - default to?..
+  if (pb.compiler)
+    pix_da_append(&args, pb.compiler);
+  else
+    pix_da_append(&args, "cc");
+
+  // Append the flgs and directories that may be needed to each line.
+  pix_da_append_multi(&args, pb.libs.items, pb.libs.count);
+  pix_da_append_multi(&args, pb.cflags.items, pb.cflags.count);
+  pix_da_append_multi(&args, pb.ldflags.items, pb.ldflags.count);
+  pix_da_append_multi(&args, pb.defines.items, pb.defines.count);
+  pix_da_append_multi(&args, pb.inc_dirs.items, pb.inc_dirs.count);
+
+  for (size_t i = 0; i < pb.files.count; ++i) {
+    char *path = realpath(pb.files.items[i], NULL);
+
+    if (path == NULL) {
+      p_err("Unable to find file: %s", pb.files.items[i]);
+      exit(1);
     }
 
-    pix_da_append(&args, pb.compiler);
+    // Yes this leaks but short lived so...
+    char *obj = pix_calloc(pix_strlen(path));
+    strcpy(obj, path);
+    obj[strlen(path) - 1] = 'o';
 
+    // p_log("%s", obj);
+    // p_log("%s", path);
+
+    pix_da_append(&pb.obj_files, obj);
+
+    if (is_file_newer(path, obj)) {
+      // Append file to rebuild.
+      pix_da_append(&args, path);
+
+      // Add out directory to same path as object
+      pix_da_append(&args, "-o");
+      pix_da_append(&args, obj);
+
+      // We don't want to link.
+      pix_da_append(&args, "-c");
+
+      // Finish command.
+      pix_da_append(&args, NULL);
+
+      // We fork now to do the compiliation:
+      p_info("Compiling %s", path);
+      exec_fork(&args);
+
+      // Reset DA back 5 to start commands without redoing.
+      // This is the exact number of da_appends inside this if.
+      args.count -= 5;
+
+      // Easy way to check if need to update exec instead of stat
+      rebuild_exe = true;
+    }
+  }
+
+  if (rebuild_exe) {
     if (pb.name) {
       pix_da_append(&args, "-o");
       pix_da_append(&args, pb.name);
     }
 
-    pix_da_append_multi(&args, pb.libs.items, pb.libs.count);
-    pix_da_append_multi(&args, pb.cflags.items, pb.cflags.count);
-    pix_da_append_multi(&args, pb.ldflags.items, pb.ldflags.count);
-    pix_da_append_multi(&args, pb.defines.items, pb.defines.count);
-    pix_da_append_multi(&args, pb.inc_dirs.items, pb.inc_dirs.count);
-    pix_da_append_multi(&args, pb.files.items, pb.files.count);
-
-    // Ready to run, add NULL term.
+    pix_da_append_multi(&args, pb.obj_files.items, pb.obj_files.count);
     pix_da_append(&args, NULL);
 
-    p_log("Running the following command:");
-    print_da(args.count, args.items);
-
-    if (execvp(args.items[0], (char *const *)args.items) < 0) {
-      p_err("Could not exec child process: %s", strerror(errno));
-      exit(1);
-    }
-
+    p_info("Compiling executable");
+    exec_fork(&args);
   } else {
-    wait(NULL);
+    p_info("No changes detected.");
   }
 
-  return cpid;
+  return 0;
 }
 
 i32 main(i32 argc, char **argv) {

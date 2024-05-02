@@ -4,8 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "pb_main.h"
 #include "pb_stack.h"
-#include "pix_build.h"
 #include "pix_logging.h"
 
 // helper printer function.
@@ -36,23 +36,24 @@ char *luat_to_string(int type) {
   unreachable();
 }
 
-void parse_build_file(lua_State *state, char *prefix, pb_stack *stack, CmdList *cmds) {
-  p_info("Parsing build file function");
-
-  lua_pushnil(state); // The first key
-
-  const char *key, value;
-  char hex[16];
-
-  while (lua_next(state, -2)) {
-    if (lua_isnil(state, -2)) {
-      p_err("Nil State found");
-      return;
-    }
-
-    key = lua_tostring(state, -2); // The assumes the table only has k, v pairs currently.
-  }
-}
+// void parse_build_file(lua_State *state, char *prefix, pb_stack *stack, CmdList *cmds) {
+//   p_info("Parsing build file function");
+//
+//   lua_pushnil(state); // The first key
+//
+//   const char *key, value;
+//   char hex[16];
+//
+//   while (lua_next(state, -2)) {
+//     if (lua_isnil(state, -2)) {
+//       p_err("Nil State found");
+//       return;
+//     }
+//
+//     key = lua_tostring(state, -2); // The assumes the table only has k, v pairs
+//     currently.
+//   }
+// }
 
 // Parse the values inside the table.
 void parse_kv_table(lua_State *state, char *prefix, pb_stack *stack) {

@@ -56,12 +56,6 @@
 #define WHITE "\x1b[1;37m"
 
 // Colour utils
-#define BOLD "\x1b[1m"
-#define UNDERLINE "\x1b[4m"
-#define BLINK "\x1b[5m"
-#define REVERSE "\x1b[7m"
-#define HIDE "\x1b[8m"
-#define CLEAR "\x1b[2J"
 /* #define CLRLINE "\r\e[K" // or "\e[1K\r" */
 
 // New hack to get the filename I found :D
@@ -211,5 +205,53 @@
     p_emrg("UNREACHABLE CONTENT REACHED");                                               \
     exit(119);                                                                           \
   } while (0)
+
+#endif
+
+#ifndef PL_LOGGING_EXTENDED_H
+#define PL_LOGGING_EXTENDED_H 1
+
+// PIXTODO:
+// https://xn--rpa.cc/irl/term.html
+//
+// Investigate this.
+
+// Pix Log Colour Locations
+#define PL_FG "3"
+#define PL_BRIGHT_FG "9"
+#define PL_BG "4"
+#define PL_BRIGHT_BG "10"
+
+// Pix Log Colours
+#define PL_BLACK "0"
+#define PL_RED "1"
+#define PL_GREEN "2"
+#define PL_YELLOW "3"
+#define PL_BLUE "4"
+#define PL_MAGENTA "5"
+#define PL_CYAN "6"
+#define PL_WHITE "7"
+
+// Pix Log Styles.
+#define PL_PLAIN "0"
+#define PL_BRIGHT "1"
+#define PL_NO "2"
+#define PL_UNDERLINE "4"
+#define PL_BLINK "5"
+#define PL_REVERSE "7"
+#define PL_HIDE "8"
+
+// Join with another style
+#define PL_WITH ";"
+// \x1b[4;1;23m
+// PL_FMT(PL_UNDERLINE PL_JOIN PL_BRIGHT PL_JOIN PL_NO PL_ITALIC)
+
+#define PL_CLEAR "\x1b[2J"
+
+#define PL_ESCAPE "\x1b"
+#define PL_FMT(style) PL_ESCAPE "[" style "m"
+
+// Usage example:
+// write(1, PL_FMT(PL_BRIGHT) "some text" fmt(PL_NO PL_BRIGHT) "\n", 15);
 
 #endif
