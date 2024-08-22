@@ -2,7 +2,7 @@
 -- identify the compiler?
 -- locate dependencies?
 local function foo()
-	return "cc"
+	return os.getenv("CC") or "cc"
 end
 
 return {
