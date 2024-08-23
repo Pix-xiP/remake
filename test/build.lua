@@ -1,7 +1,7 @@
 -- do some function stuff here perhaps?
 -- identify the compiler?
 -- locate dependencies?
-local c_compilers = { "cc", "gcc", "clang", "cl", "tcc" }
+local c_compilers = { "cc", "gcc", "clang", "tcc" }
 local function foo()
     local CC = os.getenv("CC")
     if CC ~= nil then return CC end
