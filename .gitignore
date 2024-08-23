@@ -56,3 +56,5 @@ compile_commands.json
 mimalloc**
 lua-5.4.6.tar.gz
 test/remake_test
+lua-5.4.6/src/lua
+lua-5.4.6/src/luac
