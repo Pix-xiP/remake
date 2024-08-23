@@ -1,8 +1,16 @@
 -- do some function stuff here perhaps?
 -- identify the compiler?
 -- locate dependencies?
+local c_compilers = { "cc", "gcc", "clang", "tcc" }
 local function foo()
-	return os.getenv("CC") or "cc"
+    local CC = os.getenv("CC")
+    if CC ~= nil then return CC end
+    for _, i in ipairs(c_compilers) do
+        local _, _, signal = os.execute(i .. "&>/dev/null")
+        if signal == 1 then
+            return i
+        end
+    end
 end
 
 return {
