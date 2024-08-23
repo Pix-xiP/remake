@@ -4,7 +4,10 @@
 local c_compilers = { "cc", "gcc", "clang", "tcc" }
 local function foo()
     local CC = os.getenv("CC")
-    if CC ~= nil then return CC end
+    if CC ~= nil then
+        -- To later check if the compiler in CC exists.
+        table.insert(c_compilers, 1, CC)
+    end
     for _, i in ipairs(c_compilers) do
         local _, _, signal = os.execute(i .. "&>/dev/null")
         if signal == 1 then
