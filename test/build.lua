@@ -1,24 +1,31 @@
--- do some function stuff here perhaps?
--- identify the compiler?
--- locate dependencies?
+local function check_compiler(compiler)
+    local _, _, signal = os.execute(compiler .. "&>/dev/null")
+    return signal == 1
+end
+
 local c_compilers = { "cc", "gcc", "clang", "tcc" }
-local function foo()
+
+-- do more function stuff here perhaps?
+-- identify the compiler even better?
+-- locate dependencies too?
+local function get_compiler()
     local CC = os.getenv("CC")
     if CC ~= nil then
-        -- To later check if the compiler in CC exists.
-        table.insert(c_compilers, 1, CC)
-    end
-    for _, i in ipairs(c_compilers) do
-        local _, _, signal = os.execute(i .. "&>/dev/null")
-        if signal == 1 then
-            return i
+        if check_compiler(CC) then
+            return CC
         end
+        io.stderr:write("WARNING: CC is not set to an existing compiler (check your $PATH). Using a fallback.\n")
+    end
+
+    for _, c in ipairs(c_compilers) do
+        check_compiler(c)
     end
 end
 
+
 return {
 	-- compiler = "cc",
-	compiler = foo,
+	compiler = get_compiler(),
 	name = "remake_test",
 	-- This will be prefix'd with -D
 	defines = {
