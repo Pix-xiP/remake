@@ -4,7 +4,6 @@ local function check_compiler(compiler)
 end
 
 local c_compilers = { "cc", "gcc", "clang", "tcc" }
-
 -- do more function stuff here perhaps?
 -- identify the compiler even better?
 -- locate dependencies too?
@@ -25,7 +24,7 @@ end
 
 return {
 	-- compiler = "cc",
-	compiler = get_compiler(),
+	compiler = fetch_compiler,
 	name = "remake_test",
 	-- This will be prefix'd with -D
 	defines = {
