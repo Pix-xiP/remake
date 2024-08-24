@@ -1,9 +1,6 @@
-/* #ifndef PIX_H */
-/* #define PIX_H 1 */
-
 // Pix Global Helpers
-// Standard STB style header boi, do what you like with it, slap my name at the top if you
-// care that its from me, sorry if it explodes on you.
+// Standard STB style header boi, do what you like with it, slap my name at the
+// top if you care that its from me, sorry if it explodes on you.
 //
 // ============================================================================
 // Usage:
@@ -19,6 +16,16 @@
 // ===============================
 // DEFINITIONS AND FORWARD DECS
 // ===============================
+#ifndef PIX_H
+#define PIX_H 1
+
+#ifndef PIX_DEF
+#ifdef PIX_DEF_STATIC
+#define PIX_DEF static
+#else
+#define PIX_DEF extern
+#endif
+#endif
 
 #ifndef PIX_TYPES_H
 #define PIX_TYPES_H 1
@@ -41,19 +48,16 @@
 #if defined _WIN32
 typedef unsigned int uint;
 #endif
-#ifndef PIX_TYPES
-#define PIX_TYPES 1
 
 // I need a smarter check then this.
-/* #ifndef _LIBCPP_STDINT_H */
-/* typedef signed char i8; */
-/* typedef unsigned char u8; */
-/* typedef signed short i16; */
-/* typedef unsigned short u16; */
-/* typedef signed int i32; */
-/* typedef unsigned int u32; */
-/**/
-/* #else */
+// #ifndef _LIBCPP_STDINT_H
+// typedef signed char i8;
+// typedef unsigned char u8;
+// typedef signed short i16;
+// typedef unsigned short u16;
+// typedef signed int i32;
+// typedef unsigned int u32;
+// #else
 // Use STDINT definitions for portability
 #include <stdint.h>
 typedef int8_t i8;
@@ -75,7 +79,26 @@ typedef double f64;
 typedef u8 b8;
 typedef u16 b16;
 typedef i32 b32;
-typedef u8 bool; // Convience bool.
+
+#if !defined(__cplusplus)
+#ifndef bool
+#define bool _Bool
+#endif
+#ifndef false
+#define false 0
+#endif
+#ifndef true
+#define true !false
+#endif
+#elif defined(__GNUC__) && !defined(__STRICT_ANSI__)
+/* Define _Bool as a GNU extension. */
+#define _Bool bool
+#if defined(__cplusplus) && __cplusplus < 201103L
+#define bool bool
+#define false false
+#define true true
+#endif
+#endif
 
 typedef char *string;
 
@@ -84,10 +107,6 @@ typedef char *string;
 //  char *str;
 //  i64 len;
 // } String; // ???
-
-#endif
-
-#endif // PIX_TYPES_H
 
 #ifdef __clang__
 typedef char c8 __attribute__((ext_vector_type(8), aligned(1)));
@@ -103,6 +122,8 @@ typedef char c32 __attribute__((vector_size(32), aligned(1)));
 typedef char c32a __attribute__((vector_size(32), aligned(32)));
 #endif
 
+#endif // PIX_TYPES_H
+
 // gimme dat sweet size_t ptrdiff_t etc
 #include <stddef.h>
 
@@ -117,246 +138,118 @@ typedef char c32a __attribute__((vector_size(32), aligned(32)));
   } while (0)
 #endif
 
-#ifndef PIX_DEF
-#define PIX_DEF static
+#ifndef pix_assert
+#include <signal.h>
+#include <stdio.h>
+#define pix_assert(expr, msg)                                                            \
+  if (!(expr)) {                                                                         \
+    perror(#expr);                                                                       \
+    msg;                                                                                 \
+    kill(0, SIGTERM);                                                                    \
+  }
 #endif
+
+// SOME ENDIAN HELPERS! Replacement for noths etc
+// swap bytes in 16 bit value
+#define pix_bswap16(x) ((u16)((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
+
+// Swap bytes in 32 bit value
+#define pix_bswap32(x)                                                                   \
+  ((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) |                            \
+   (((x) & 0x0000ff00u) << 8) | (((x) & 0x000000ffu) << 24))
+
+// Swap bytes in 64 bit value
+#define pix_bswap64(x)                                                                   \
+  ((((x) & 0xff00000000000000ull) >> 56) | (((x) & 0x00ff000000000000ull) >> 40) |       \
+   (((x) & 0x0000ff0000000000ull) >> 24) | (((x) & 0x000000ff00000000ull) >> 8) |        \
+   (((x) & 0x00000000ff000000ull) << 8) | (((x) & 0x0000000000ff0000ull) << 24) |        \
+   (((x) & 0x000000000000ff00ull) << 40) | (((x) & 0x00000000000000ffull) << 56))
+
+// ===============================
+// FUNCTION DEFINITIONS
+// ===============================
 
 PIX_DEF void *pix_memcpy(void *dst, const void *src, size_t n);
 PIX_DEF void *pix_memset(void *s, i32 c, u64 n);
 PIX_DEF void *pix_calloc(i64 sz);
-PIX_DEF i64 pix_strlen(char *str);
-PIX_DEF i64 _pix_strlen(const char *str); // This is just in case you don't want the + 1
+PIX_DEF i64 pix_strlen(const char *str);
+PIX_DEF i64 _pix_strlen(const char *str); // Just in case you don't want the + 1
 PIX_DEF void pix_strncpy(char *dst, const char *src, i64 n);
 PIX_DEF i32 pix_strcmp(const char *p1, const char *p2);
 PIX_DEF char *shrinkwrap_string(char *in_str);
 PIX_DEF void *byte_cpy(void *dst, const void *src, i32 len, u8 **pos);
 PIX_DEF char *int_to_addr(u32 ip, char **addr);
-PIX_DEF u32 addr_to_int(const char *addr, u32 *out);
+PIX_DEF i32 addr_to_int(const char *addr, u32 *out);
 PIX_DEF bool mkdir_if_not_exists(const char *path);
 
-// A copy of my loggin file
-#ifndef P_LOGGING_H
-#define P_LOGGING_H 1
+// LOGGING
+typedef enum {
+  px_emrg,
+  px_alert,
+  px_crit,
+  px_err,
+  px_warn,
+  px_success,
+  px_info,
+  px_verb,
+  px_dbg,
+  px_dbgv
+} px_logtypes;
 
-// NOTE: Update this to VERBOSE(A) A in local program to create verbose options
-#ifndef VERBOSE
-#define VERBOSE(A)
-#endif
+// PIXTODO: Improve general loggin and screen manipulation with escape codes.
+#define _NRM "\x1b[0;0m"
+#define _RED "\x1b[0;31m"
+#define _GRN "\x1b[0;32m"
+#define _YEL "\x1b[0;33m"
+#define _BLU "\x1b[0;34m"
+#define _MAG "\x1b[0;35m"
+#define _CYN "\x1b[0;36m"
+#define _WHT "\x1b[0;37m"
 
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
+#define _B_NRM "\x1b[1;0m"
+#define _B_RED "\x1b[1;31m"
+#define _B_GRN "\x1b[1;32m"
+#define _B_YEL "\x1b[1;33m"
+#define _B_BLU "\x1b[1;34m"
+#define _B_MAG "\x1b[1;35m"
+#define _B_CYN "\x1b[1;36m"
+#define _B_WHT "\x1b[1;37m"
 
-// NOTE: Update this in the local program to set the degree of logs being set.
-#ifndef P_LOG_LEVEL
-#define P_LOG_LEVEL 7
-#endif
+#define _BOLD "\x1b[1m"
+#define _UNDERLINE "\x1b[4m"
+#define _BLINK "\x1b[5m"
+#define _REVERSE "\x1b[7m"
+#define _HIDE "\x1b[8m"
+#define _CLEAR "\x1b[2J"
 
-// NOTE: Update this in the local program to unset the values
-#ifndef P_LOG_COLOUR
-#define P_LOG_COLOUR 1
-#endif
+#define PX_LOG_OUT stderr
 
-// NOTE: Update this in the local program to choose where log messages go out
-// to.
-#ifndef P_LOG_OUT
-#define P_LOG_OUT stderr
-#endif
-
-// Same as syslog
-#define EMERG 0
-#define ALERT 1
-#define CRIT 2
-#define ERR 3
-#define WARN 4
-#define SUCCESS 5
-#define INFO 6
-#define DBG 7
-
-// Better colour definition
-#define NORM "\x1b[0m"
-#define BLACK "\x1b[0;30m"
-#define L_BLACK "\x1b[1;30m"
-#define RED "\x1b[0;31m"
-#define L_RED "\x1b[1;31m"
-#define GREEN "\x1b[0;32m"
-#define L_GREEN "\x1b[1;32m"
-#define BROWN "\x1b[0;33m"
-#define YELLOW "\x1b[1;33m"
-#define BLUE "\x1b[0;34m"
-#define L_BLUE "\x1b[1;34m"
-#define PURPLE "\x1b[0;35m"
-#define L_PURPLE "\x1b[1;35m"
-#define CYAN "\x1b[0;36m"
-#define L_CYAN "\x1b[1;36m"
-#define GREY "\x1b[0;37m"
-#define WHITE "\x1b[1;37m"
-
-// Colour utils
-#define BOLD "\x1b[1m"
-#define UNDERLINE "\x1b[4m"
-#define BLINK "\x1b[5m"
-#define REVERSE "\x1b[7m"
-#define HIDE "\x1b[8m"
-#define CLEAR "\x1b[2J"
-/* #define CLRLINE "\r\e[K" // or "\e[1K\r" */
-
-// New hack to get the filename I found :D
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-// Could pull out errno here with this found in syslog:
+// syslog uses this, pull out errno
+#include <errno.h>
 #define err_to_str() (errno == 0 ? "" : strerror(errno))
 
-// Log functions
-#define p_emrg(msg, ...)                                                                 \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT,                                                                   \
-            RED "[!!!]: "                                                                \
-                "%s (%s:%d) " NORM msg YELLOW " errno: %s\n" NORM,                       \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__, err_to_str());                  \
-  } while (0)
+extern bool PX_VERBOSE_LOGGING; // Defaults FALSE
+PIX_DEF void px_log(u16 type, const char *format, ...);
+// END LOGGING
 
-#define p_alert(msg, ...)                                                                \
+#define unreacheable()                                                                   \
   do {                                                                                   \
-    fprintf(P_LOG_OUT, PURPLE "[A!]: " NORM msg "\n", ##__VA_ARGS__);                    \
-  } while (0)
-
-#define p_crit(msg, ...)                                                                 \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT,                                                                   \
-            RED "[!!]: "                                                                 \
-                "%s (%s:%d) " NORM msg YELLOW " errno: %s\n" NORM,                       \
-            __func__, __FILE__, __LINE__, ##__VA_ARGS__, err_to_str());                  \
-  } while (0)
-
-#define p_err(msg, ...)                                                                  \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, RED "[!]: " NORM msg "\n", ##__VA_ARGS__);                        \
-  } while (0)
-
-#define p_warn(msg, ...)                                                                 \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, BLUE "[W]: " NORM msg "\n", ##__VA_ARGS__);                       \
-  } while (0)
-
-#define p_success(msg, ...)                                                              \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, GREEN "[S]: " NORM msg "\n", ##__VA_ARGS__);                      \
-  } while (0)
-
-#define p_info(msg, ...)                                                                 \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, CYAN "[+]: " NORM msg "\n", ##__VA_ARGS__);                       \
-  } while (0)
-
-// The ability to pull out lines and func can be extended to others if required
-#define p_dbg(msg, ...)                                                                  \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, GREY "[D]: " NORM msg "\n", ##__VA_ARGS__);                       \
-  } while (0)
-
-#define p_dbgv(msg, ...)                                                                 \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, GREY "[D]: %s (%s:%d) " NORM msg "\n", __func__, __FILE__,        \
-            __LINE__, ##__VA_ARGS__);                                                    \
-  } while (0)
-
-#define p_log(msg, ...)                                                                  \
-  do {                                                                                   \
-    fprintf(P_LOG_OUT, "[>]: " msg "\n", ##__VA_ARGS__);                                 \
-  } while (0)
-
-// Log level controls -- Syslog style
-//
-#ifndef DEBUG
-#undef p_dbg
-#define p_dbg(msg, ...)                                                                  \
-  do {                                                                                   \
-  } while (0)
-#undef p_dbgv
-#define p_dbgv(msg, ...)                                                                 \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-#if P_LOG_LEVEL < INFO
-#undef p_info
-#define p_dbg(msg, ...)                                                                  \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-#if P_LOG_LEVEL < SUCCESS
-#undef p_p_success
-#define p_success(msg, ...)                                                              \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-#if P_LOG_LEVEL < WARN
-#undef p_warn
-#define p_warn(msg, ...)                                                                 \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-#if P_LOG_LEVEL < ERR
-#undef p_err
-#define p_err(msg, ...)                                                                  \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-#if P_LOG_LEVEL < ALERT
-#undef p_alert
-#define p_alert(msg, ...)                                                                \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-#if P_LOG_LEVEL < EMERG
-#undef p_emrg
-#define p_emrg(msg, ...)                                                                 \
-  do {                                                                                   \
-  } while (0)
-#endif
-
-// Turn off colors.
-#if P_LOG_COLOUR < 1
-#undef NORM
-#define NORM
-#undef RED
-#define RED
-#undef PURPLE
-#define PURPLE
-#undef YELLOW
-#define YELLOW
-#undef BROWN
-#define BROWN
-#undef GREEN
-#define GREEN
-#undef CYAN
-#define CYAN
-#undef BLUE
-#define BLUE
-#undef GREY
-#define GREY
-#endif
-
-#define unreachable()                                                                    \
-  do {                                                                                   \
-    p_emrg("UNREACHABLE CONTENT REACHED");                                               \
+    px_log(px_emrg, "Unreacheable content reached.");                                    \
     exit(119);                                                                           \
   } while (0)
 
-#endif
+#endif // PIX_H
 
 // ===============================
 // IMPLEMENTATION BAY-BEE
 // ===============================
 
+// {{ Mark: PIX_IMPLEMENTATION
+// #define PIX_IMPLEMENTATION // Uncomment for quick easy syntax highlighting
 #if defined(PIX_IMPLEMENTATION) && !defined(PIX_IMPLEMENTATION_DONE)
-#define PIX_IMPLEMENTATION_DONE
+#define PIX_IMPLEMENTATION_DONE 1
 
 // Make sure we have a null term'd string.
 PIX_DEF void pix_strncpy(char *dst, const char *src, i64 n) {
@@ -383,7 +276,7 @@ PIX_DEF i32 pix_strcmp(const char *p1, const char *p2) {
 PIX_DEF char *shrinkwrap_string(char *in_str) {
   char *new_str = NULL;
   i64 len = pix_strlen(in_str);
-  new_str = calloc(len, sizeof(char));
+  new_str = (char *)pix_calloc(len);
   pix_memcpy(new_str, in_str, len - 1);
   PIX_FREE(in_str);
   return new_str;
@@ -392,8 +285,8 @@ PIX_DEF char *shrinkwrap_string(char *in_str) {
 // Does a memcpy and moves along the position pointer
 // Position can be same as dst, just allows for versitily this way
 PIX_DEF void *byte_cpy(void *dst, const void *src, i32 len, u8 **pos) {
-  char *d = dst;
-  const char *s = src;
+  u8 *d = (u8 *)dst;
+  const u8 *s = (u8 *)src;
   *pos += len; // Shift the pointer along before we modify the size var;
   while (len--)
     *d++ = *s++;
@@ -402,17 +295,16 @@ PIX_DEF void *byte_cpy(void *dst, const void *src, i32 len, u8 **pos) {
 
 // Converts a string addr into the integer representation.
 // If the err check fills it will return 5 not 4, indicating an invalid ip.
-PIX_DEF u32 addr_to_int(const char *addr, u32 *out) {
-  u32 b0, b1, b2, b3, *o;
+PIX_DEF i32 addr_to_int(const char *addr, u32 *out) {
+  u32 b0, b1, b2, b3;
   char err_check[2];
 
-  if (out != NULL)
-    o = out;
+  pix_assert(out != NULL, px_log(px_err, "addr_to_int: out param was not initilised"));
 
   if (sscanf(addr, "%u.%u.%u.%u%1s", &b3, &b2, &b1, &b0, err_check) == 4) {
     if (b3 < 256 && b2 < 256 && b1 < 256 && b0 < 256) {
-      *o = (b3 << 24) + (b2 << 16) + (b1 << 8) + b0;
-      return *o;
+      *out = (b3 << 24) + (b2 << 16) + (b1 << 8) + b0;
+      return 0;
     }
   }
   return -1;
@@ -431,15 +323,16 @@ PIX_DEF char *int_to_addr(u32 ip, char **addr) {
 
   if (addr != NULL)
     a = *addr;
+  else // If it is NULL, alloc.
+    a = (char *)pix_calloc(PIX_IP_MAX_STR_LEN);
 
-  a = pix_calloc(PIX_IP_MAX_STR_LEN);
   snprintf(a, PIX_IP_MAX_STR_LEN, "%d.%d.%d.%d", b[3], b[2], b[1], b[0]);
   return a;
 }
 
 // I'm not actually if this is faster then LIBC standard anymore
 // given they use inline asm now.. pray the compiler is dope? xD
-void *pix_memcpy(void *dst, const void *src, size_t n) {
+PIX_DEF void *pix_memcpy(void *dst, const void *src, size_t n) {
   char *d = (char *)dst;
   const char *s = (char *)src;
 
@@ -623,12 +516,15 @@ PIX_DEF void *pix_calloc(i64 sz) {
   return (void *)mem;
 }
 
-// TEMP INCLUEDE FOR FIXBELOW
+// Temp include <string.h> to fix strlen problem for now.
 #include <string.h>
-// Returns the length of a string including the null term.
-PIX_DEF i64 pix_strlen(char *str) { return strlen((char *)str) + 1; }
+PIX_DEF i64 pix_strlen(const char *str) { return strlen((char *)str) + 1; }
 
-// MEMORY HEAP OVERFLOW HERE FOR SOME REASON.
+/* // Returns the length of a string including the null term. */
+/* PIX_DEF i64 pix_strlen(char *str) { return _pix_strlen((char *)str) + 1; } */
+
+// PIXTODO: This needs to be fixed - has a head overflow according to fsantise
+// addrs.
 PIX_DEF i64 _pix_strlen(const char *str) {
   const char *char_ptr;
   const u64 *longword_ptr;
@@ -662,8 +558,6 @@ PIX_DEF i64 _pix_strlen(const char *str) {
     himagic = ((himagic << 16) << 16) | himagic;
     lomagic = ((lomagic << 16) << 16) | lomagic;
   }
-  if (sizeof(longword) > 8)
-    abort();
 
   // Instead of the traditional loop which tests each character,
   // we will test a longword at a time.  The tricky part is testing
@@ -707,16 +601,76 @@ PIX_DEF bool mkdir_if_not_exists(const char *path) {
   i32 result = mkdir(path, 0755);
   if (result < 0) {
     if (errno == EEXIST) {
-      p_info("Directory '%s' already exists", path);
+      px_log(px_info, "Directory '%s' already exists", path);
       return false;
     }
-    p_alert("Failed to create directory: '%s'. Error: %s", path, strerror(errno));
+    px_log(px_alert, "Failed to create directory: %s", path);
     return true;
   }
-  p_info("Directory: '%s' created", path);
+  px_log(px_info, "Directory: '%s' created", path);
   return false;
 }
 
-#endif // PIX_IMPLEMENTATION
+/// PIXTODO: Wrap this in a #define PIX_LOGGING
+// Logging implementation
+#include <stdarg.h>
+#include <stdio.h>
 
-/* #endif // PIX_H */
+bool PX_VERBOSE_LOGGING = false;
+
+PIX_DEF void px_log(u16 type, const char *format, ...) {
+  switch (type) {
+  case px_emrg:
+    fprintf(PX_LOG_OUT, _B_RED "[E]: %s (%s:%d) " _NRM, __func__, __FILE__, __LINE__);
+    break;
+  case px_alert:
+    fprintf(PX_LOG_OUT, _B_MAG "[A]: %s (%s:%d) " _NRM, __func__, __FILE__, __LINE__);
+    break;
+  case px_crit:
+    fprintf(PX_LOG_OUT, _RED "[X]: %s (%s:%d) " _NRM, __func__, __FILE__, __LINE__);
+    break;
+  case px_err:
+    fprintf(PX_LOG_OUT, _RED "[!]: ");
+    break;
+  case px_warn:
+    fprintf(PX_LOG_OUT, _B_YEL "[W]: " _YEL);
+    break;
+  case px_success:
+    fprintf(PX_LOG_OUT, _B_GRN "[S]: " _GRN);
+    break;
+  case px_info:
+    fprintf(PX_LOG_OUT, _B_CYN "[+]: " _NRM);
+    break;
+  case px_verb:
+    fprintf(PX_LOG_OUT, _MAG "[V]: " _NRM);
+    break;
+  case px_dbg:
+    fprintf(PX_LOG_OUT, _WHT "[DBG]: " _WHT);
+    break;
+  case px_dbgv:
+    fprintf(PX_LOG_OUT, _WHT "[DBG]: %s (%s:%d)" _WHT, __func__, __FILE__, __LINE__);
+    break;
+  default:
+    fprintf(PX_LOG_OUT, "[LOG]: ");
+    break;
+  }
+  va_list args;
+  va_start(args, format);
+  vfprintf(PX_LOG_OUT, format, args);
+  va_end(args);
+  if (type > px_err)
+    fprintf(PX_LOG_OUT, "errno: %s", err_to_str());
+  fprintf(PX_LOG_OUT, "\n" _NRM);
+}
+
+#ifndef PIX_TIME
+#define PIX_TIME 1
+
+#ifndef PX_MS_IN_SECOND
+#define PX_MS_IN_SECOND 1000
+#endif
+
+#endif
+
+#endif // PIX_IMPLEMENTATION
+       // }}
