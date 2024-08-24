@@ -1,19 +1,26 @@
--- do some function stuff here perhaps?
--- identify the compiler?
--- locate dependencies?
-local c_compilers = { "cc", "gcc", "clang", "tcc" }
-local function fetch_compiler()
-	local CC = os.getenv("CC")
-	if CC ~= nil then
-		return CC
-	end
-	for _, i in ipairs(c_compilers) do
-		local _, _, signal = os.execute(i .. "&>/dev/null")
-		if signal == 1 then
-			return i
-		end
-	end
+local function check_compiler(compiler)
+    local _, _, signal = os.execute(compiler .. "&>/dev/null")
+    return signal == 1
 end
+
+local c_compilers = { "cc", "gcc", "clang", "tcc" }
+-- do more function stuff here perhaps?
+-- identify the compiler even better?
+-- locate dependencies too?
+local function get_compiler()
+    local CC = os.getenv("CC")
+    if CC ~= nil then
+        if check_compiler(CC) then
+            return CC
+        end
+        io.stderr:write("WARNING: CC is not set to an existing compiler (check your $PATH). Using a fallback.\n")
+    end
+
+    for _, c in ipairs(c_compilers) do
+        check_compiler(c)
+    end
+end
+
 
 return {
 	-- compiler = "cc",
