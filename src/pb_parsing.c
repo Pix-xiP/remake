@@ -6,7 +6,7 @@
 
 #include "pb_main.h"
 #include "pb_stack.h"
-#include "pix_logging.h"
+#include "pix.h"
 
 // helper printer function.
 char *luat_to_string(int type) {
@@ -33,11 +33,11 @@ char *luat_to_string(int type) {
     return "unmapped";
   }
 
-  unreachable();
+  pix_unreachable();
 }
 
 // void parse_build_file(lua_State *state, char *prefix, pb_stack *stack, CmdList *cmds) {
-//   p_info("Parsing build file function");
+//   px_log(px_info,"Parsing build file function");
 //
 //   lua_pushnil(state); // The first key
 //
@@ -46,7 +46,7 @@ char *luat_to_string(int type) {
 //
 //   while (lua_next(state, -2)) {
 //     if (lua_isnil(state, -2)) {
-//       p_err("Nil State found");
+//       px_log(px_err, "Nil State found");
 //       return;
 //     }
 //

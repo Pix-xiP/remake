@@ -1,8 +1,8 @@
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "pb_main.h"
 #include "pix.h"
-// #include "pix_scuffed_da.h"
 
 extern PB_Builder pb;
 extern PB_Context pc;
@@ -22,4 +22,10 @@ i32 is_file_newer(const char *f, const char *f2) {
     return 1;
 
   return f_stat.st_mtime > f2_stat.st_mtime;
+}
+
+bool does_file_exist(const char *f) {
+  if (access(f, F_OK))
+    return false;
+  return true;
 }

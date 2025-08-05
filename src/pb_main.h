@@ -1,7 +1,9 @@
 #ifndef PB_MAIN_H
 #define PB_MAIN_H 1
 
-#include "pix_scuffed_da.h"
+#include "pix.h"
+
+#define DEFAULT_FILE_NAME "build.lua"
 
 typedef enum Optimisation {
   none = 0,
@@ -19,6 +21,7 @@ typedef struct PB_Builder {
   const char *build_path;
   const char *name;
 
+  DynamicArray lib_dirs;
   DynamicArray libs;
   DynamicArray files;
   DynamicArray cflags;

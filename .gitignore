@@ -59,3 +59,4 @@ test/remake_test
 lua-5.4.6/src/lua
 lua-5.4.6/src/luac
 .cache/clangd/index
+lua-5.4.6/install

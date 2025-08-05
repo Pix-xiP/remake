@@ -129,23 +129,23 @@ typedef char c32a __attribute__((vector_size(32), aligned(32)));
 
 #ifndef PIX_FREE
 #include <stdlib.h>
-#define PIX_FREE(ptr)                                                                    \
-  do {                                                                                   \
-    if (ptr != NULL) {                                                                   \
-      free(ptr);                                                                         \
-      ptr = NULL;                                                                        \
-    }                                                                                    \
+#define PIX_FREE(ptr)                                                                              \
+  do {                                                                                             \
+    if (ptr != NULL) {                                                                             \
+      free(ptr);                                                                                   \
+      ptr = NULL;                                                                                  \
+    }                                                                                              \
   } while (0)
 #endif
 
 #ifndef pix_assert
 #include <signal.h>
 #include <stdio.h>
-#define pix_assert(expr, msg)                                                            \
-  if (!(expr)) {                                                                         \
-    perror(#expr);                                                                       \
-    msg;                                                                                 \
-    kill(0, SIGTERM);                                                                    \
+#define pix_assert(expr, msg)                                                                      \
+  if (!(expr)) {                                                                                   \
+    perror(#expr);                                                                                 \
+    msg;                                                                                           \
+    kill(0, SIGTERM);                                                                              \
   }
 #endif
 
@@ -154,15 +154,15 @@ typedef char c32a __attribute__((vector_size(32), aligned(32)));
 #define pix_bswap16(x) ((u16)((((x) >> 8) & 0xff) | (((x) & 0xff) << 8)))
 
 // Swap bytes in 32 bit value
-#define pix_bswap32(x)                                                                   \
-  ((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) |                            \
-   (((x) & 0x0000ff00u) << 8) | (((x) & 0x000000ffu) << 24))
+#define pix_bswap32(x)                                                                             \
+  ((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) | (((x) & 0x0000ff00u) << 8) |         \
+   (((x) & 0x000000ffu) << 24))
 
 // Swap bytes in 64 bit value
-#define pix_bswap64(x)                                                                   \
-  ((((x) & 0xff00000000000000ull) >> 56) | (((x) & 0x00ff000000000000ull) >> 40) |       \
-   (((x) & 0x0000ff0000000000ull) >> 24) | (((x) & 0x000000ff00000000ull) >> 8) |        \
-   (((x) & 0x00000000ff000000ull) << 8) | (((x) & 0x0000000000ff0000ull) << 24) |        \
+#define pix_bswap64(x)                                                                             \
+  ((((x) & 0xff00000000000000ull) >> 56) | (((x) & 0x00ff000000000000ull) >> 40) |                 \
+   (((x) & 0x0000ff0000000000ull) >> 24) | (((x) & 0x000000ff00000000ull) >> 8) |                  \
+   (((x) & 0x00000000ff000000ull) << 8) | (((x) & 0x0000000000ff0000ull) << 24) |                  \
    (((x) & 0x000000000000ff00ull) << 40) | (((x) & 0x00000000000000ffull) << 56))
 
 // ===============================
@@ -221,6 +221,7 @@ typedef enum {
 #define _REVERSE "\x1b[7m"
 #define _HIDE "\x1b[8m"
 #define _CLEAR "\x1b[2J"
+// #define _CLRLINE "\r\e[K // or \e[1K\r"
 
 #define PX_LOG_OUT stderr
 
@@ -234,13 +235,60 @@ extern bool PX_VERBOSE_LOGGING; // Defaults FALSE
 PIX_DEF void px_log(u16 type, const char *format, ...);
 // END LOGGING
 
-#define unreacheable()                                                                   \
-  do {                                                                                   \
-    px_log(px_emrg, "Unreacheable content reached.");                                    \
-    exit(119);                                                                           \
+#define pix_unreachable()                                                                          \
+  do {                                                                                             \
+    px_log(px_emrg, "Unreachable content reached.");                                               \
+    exit(119);                                                                                     \
   } while (0)
 
 #endif // PIX_H
+//
+#ifndef PIX_SCUFFED_DA_H // {{
+#define PIX_SCUFFED_DA_H 1
+
+#ifndef PIX_REALLOC
+#define PIX_REALLOC realloc
+#endif
+
+typedef struct _dynamic_array_t {
+  const char **items;
+  size_t count;
+  size_t capacity;
+} DynamicArray;
+
+#define PIX_DYNARR_INIT_SZ 256
+
+#define pix_da_free(da) PIX_FREE((da).items);
+
+#define pix_da_append(da, item)                                                                    \
+  do {                                                                                             \
+    if ((da)->count >= (da)->capacity) {                                                           \
+      (da)->capacity = (da)->capacity == 0 ? PIX_DYNARR_INIT_SZ : 2 * (da)->capacity;              \
+      (da)->items = PIX_REALLOC((da)->items, (da)->capacity * sizeof(*(da)->items));               \
+      pix_assert((da)->items != NULL, px_log(px_err, "Unable to realloc"));                        \
+    }                                                                                              \
+    (da)->items[(da)->count++] = (item);                                                           \
+  } while (0)
+
+#define pix_da_append_multi(da, in_items, items_count)                                             \
+  do {                                                                                             \
+    if ((da)->count + items_count > (da)->capacity) {                                              \
+      if ((da)->capacity == 0) {                                                                   \
+        (da)->capacity = PIX_DYNARR_INIT_SZ;                                                       \
+      }                                                                                            \
+      while ((da)->count + items_count > (da)->capacity) {                                         \
+        (da)->capacity *= 2;                                                                       \
+      }                                                                                            \
+      (da)->items = PIX_REALLOC((da)->items, (da)->capacity * sizeof(*(da)->items));               \
+      pix_assert((da)->items != NULL, px_log(px_err, "Out of Memory"));                            \
+    }                                                                                              \
+    pix_memcpy((da)->items + (da)->count, (in_items), (items_count) * sizeof(*(da)->items));       \
+    (da)->count += items_count;                                                                    \
+  } while (0)
+
+#define pix_da_append_cstr(da, buf, sz) pix_da_append_multi(da, buf, sz)
+
+#endif // PIX DA }}
 
 // ===============================
 // IMPLEMENTATION BAY-BEE
@@ -468,10 +516,10 @@ PIX_DEF void *_pix_big_memset(void *s, i32 c, u64 n) {
   }
 
 // Complete the last few iterations:
-#define TRY_STAMP_32_BYTES                                                               \
-  if (p < last_word) {                                                                   \
-    *((c32a *)p) = val32;                                                                \
-    p += 32;                                                                             \
+#define TRY_STAMP_32_BYTES                                                                         \
+  if (p < last_word) {                                                                             \
+    *((c32a *)p) = val32;                                                                          \
+    p += 32;                                                                                       \
   }
 
   TRY_STAMP_32_BYTES
@@ -658,7 +706,7 @@ PIX_DEF void px_log(u16 type, const char *format, ...) {
   va_start(args, format);
   vfprintf(PX_LOG_OUT, format, args);
   va_end(args);
-  if (type > px_err)
+  if (type == px_emrg || type == px_alert || type == px_crit)
     fprintf(PX_LOG_OUT, "errno: %s", err_to_str());
   fprintf(PX_LOG_OUT, "\n" _NRM);
 }

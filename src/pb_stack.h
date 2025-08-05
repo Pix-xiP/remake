@@ -11,12 +11,11 @@
 #include <string.h>
 
 #include "pix.h"
-#include "pix_logging.h"
 
-#define m_clone(dst, src)                                                                \
-  {                                                                                      \
-    dst = malloc(strlen(src) + 1);                                                       \
-    memcpy(dst, src, strlen(src) + 1);                                                   \
+#define m_clone(dst, src)                                                                          \
+  {                                                                                                \
+    dst = malloc(strlen(src) + 1);                                                                 \
+    memcpy(dst, src, strlen(src) + 1);                                                             \
   }
 
 typedef struct _stack_t {
