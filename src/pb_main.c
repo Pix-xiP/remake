@@ -246,6 +246,9 @@ i32 run_build() {
   pix_da_append_multi(&args, pb.libs.items, pb.libs.count);
 
   for (size_t i = 0; i < pb.files.count; ++i) {
+    // Store the current count of 'args' before adding file-specific arguments.
+    size_t initial_args_count = args.count;
+
     char *path = realpath(pb.files.items[i], NULL);
 
     if (path == NULL) {
@@ -281,9 +284,8 @@ i32 run_build() {
       px_log(px_info, "Compiling %s", path);
       exec_fork(&args);
 
-      // Reset DA back 5 to start commands without redoing.
-      // This is the exact number of da_appends inside this if.
-      args.count -= 5;
+      // Reset DA to its state before adding temporary arguments for this file.
+      args.count = initial_args_count;
 
       // Easy way to check if need to update exec instead of stat
       rebuild_exe = true;
