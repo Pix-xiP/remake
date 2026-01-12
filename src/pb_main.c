@@ -240,15 +240,11 @@ i32 run_build() {
   // Append the flgs and directories that may be needed to each line.
   pix_da_append_multi(&args, pb.cflags.items, pb.cflags.count);
   pix_da_append_multi(&args, pb.defines.items, pb.defines.count);
-  pix_da_append_multi(&args, pb.ldflags.items, pb.ldflags.count);
   pix_da_append_multi(&args, pb.inc_dirs.items, pb.inc_dirs.count);
-  pix_da_append_multi(&args, pb.lib_dirs.items, pb.lib_dirs.count);
-  pix_da_append_multi(&args, pb.libs.items, pb.libs.count);
 
   for (size_t i = 0; i < pb.files.count; ++i) {
     // Store the current count of 'args' before adding file-specific arguments.
     size_t initial_args_count = args.count;
-
     char *path = realpath(pb.files.items[i], NULL);
 
     if (path == NULL) {
@@ -299,6 +295,9 @@ i32 run_build() {
     }
 
     pix_da_append_multi(&args, pb.obj_files.items, pb.obj_files.count);
+    pix_da_append_multi(&args, pb.ldflags.items, pb.ldflags.count);
+    pix_da_append_multi(&args, pb.lib_dirs.items, pb.lib_dirs.count);
+    pix_da_append_multi(&args, pb.libs.items, pb.libs.count);
     pix_da_append(&args, NULL);
 
     px_log(px_info, "Compiling executable");
