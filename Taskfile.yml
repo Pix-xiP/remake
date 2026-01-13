@@ -28,6 +28,7 @@ tasks:
   remake:
     aliases:
       - rem
+    silent: true
     cmds:
       - |
         mv ./pb ./pb.old

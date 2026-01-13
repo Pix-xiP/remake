@@ -1,30 +1,36 @@
--- Does this actually work? xD
-local function check_compiler(compiler)
-	local _, _, signal = os.execute(compiler .. "&>/dev/null")
-	return signal == 1
-end
-
-local c_compilers = { "cc", "gcc", "clang", "tcc" }
 -- do more function stuff here perhaps?
 -- identify the compiler even better?
 -- locate dependencies too?
-local function fetch_compiler()
+
+-- This is like, wayyy more reliable, totes!
+local function compiler_exists(compiler)
+	return os.execute("command -v " .. compiler .. " >/dev/null 2>&1")
+end
+
+local function find_compiler()
+	local c_compilers = { "clang", "cc", "gcc", "tcc" }
 	local CC = os.getenv("CC")
 	if CC ~= nil then
-		if check_compiler(CC) then
+		if compiler_exists(CC) then
 			return CC
 		end
-		io.stderr:write("[WARNING]: CC is not set to an existing compiler (check your $PATH). Using a fallback.\n")
+		io.stderr:write("[WARN]: CC is not set to an existing compiler (check your $PATH). Using a fallback.\n")
 	end
 
 	for _, c in ipairs(c_compilers) do
-		check_compiler(c)
+		if compiler_exists(c) then
+			return c
+		end
 	end
+
+	-- Like, what do we even do now? This is a total disaster!
+	io.stderr:write("[FATAL]: Could not find a C compiler! Install one, bestie!\n")
+	os.exit(1)
 end
 
 return {
-	compiler = "cc",
-	-- compiler = fetch_compiler(),
+	-- compiler = "cc",
+	compiler = find_compiler(),
 	name = "pb",
 	-- This will be prefix'd with -D
 	defines = {
