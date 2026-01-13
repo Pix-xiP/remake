@@ -120,11 +120,6 @@ bool parse_name(lua_State *L) {
 
 bool parse_compiler(lua_State *state) {
   // Parse function that could return a string, or just a string.
-  if (lua_type(state, -1) != LUA_TFUNCTION && lua_type(state, -1) != LUA_TSTRING) {
-    px_log(px_err, "[LUA]: Compiler field expects 'string' or 'function' found: '%s'",
-           luat_to_string(lua_type(state, -1)));
-    return true;
-  }
   if (lua_type(state, -1) == LUA_TFUNCTION) {
     // parse the function
     if (lua_pcall(state, 0, 1, 0)) {
@@ -132,21 +127,19 @@ bool parse_compiler(lua_State *state) {
       lua_pop(state, 1);
       return true;
     }
-    if (lua_type(state, -1) != LUA_TSTRING) {
-      px_log(px_err, "Compiler variable expecting a 'string', function returned: '%s'",
-             luat_to_string(lua_type(state, -1)));
-    }
-    alloc_and_cpy_string((void **)&pb.compiler, lua_tostring(state, -1));
-
-    // I don't understand why I don't need to pop here..
-    // state of lua is local to this function and its not being modified? Or it is being
-    //
-    // modified but not by the pcall? lua_pop(state, 1); // Remvoe what the function just
-    // added to top of the stack
-  } else {
-    alloc_and_cpy_string((void **)&pb.compiler, lua_tostring(state, -1));
   }
+
+  if (lua_type(state, -1) != LUA_TSTRING) {
+    px_log(px_err,
+           "[LUA]: Compiler field expects 'string' or a 'function' that returns a 'string', found: "
+           "'%s'",
+           luat_to_string(lua_type(state, -1)));
+    return true;
+  }
+
+  alloc_and_cpy_string((void **)&pb.compiler, lua_tostring(state, -1));
   px_log(px_dbg, "compiler value: %s", pb.compiler);
+
   return false;
 }
 
