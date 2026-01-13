@@ -1,0 +1,38 @@
+version: "3"
+
+vars:
+  # These same variables can be pulled into a shell script and run as an alternative to Task.
+  LIBS: "-I ./lua-5.4.6/src -I ./mimalloc/include -L./lua-5.4.6/src -llua -lm"
+  SRC: "./src/*.c"
+  # MIMALLOC: "./mimalloc/src/static.c"
+  CFLAGS: "-ggdb -g3 -Og -fPIC -fno-omit-frame-pointer -fsanitize=address"
+  COMPILER: "gcc"
+
+tasks:
+  build:
+    cmds:
+      - task: clean
+      - ./pb
+
+  clean:
+    dir: ./src
+    cmds:
+      - rm ./*.o
+
+  bootstrap:
+    cmds:
+      - rm ./pb_bootstrap
+      # - "{{.COMPILER}} -o pb_bootstrap {{.CFLAGS}} {{.MIMALLOC}} {{.SRC}} {{.LIBS}}"
+      - "{{.COMPILER}} -o pb_bootstrap {{.CFLAGS}} {{.SRC}} {{.LIBS}}"
+
+  remake:
+    aliases:
+      - rem
+    cmds:
+      - |
+        mv ./pb ./pb.old
+        ./pb.old
+        if [ ! -f ./pb ]; then
+          echo "Failed to build || nothing was changed, check output"
+          mv ./pb.old ./pb
+        fi

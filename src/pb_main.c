@@ -61,7 +61,9 @@ i32 parse_opt_level(lua_State *L) {
            luat_to_string(lua_type(L, -1)));
     return 1;
   }
+
   const char *val = lua_tostring(L, -1);
+
   if (pix_strcmp(val, "none") == 0)
     pc.op_lvl = none;
   else if (pix_strcmp(val, "debug") == 0)
@@ -92,6 +94,7 @@ void parse_nested_table(lua_State *state) {
   return; // PIXTODO: Remove this when tackling the rest lmao.
   lua_pushvalue(state, -1);
   lua_pushnil(state);
+
   while (lua_next(state, -2) != 0) {
     if (lua_type(state, -2) == LUA_TSTRING) {
       px_log(19, "    This is a string'd key: %s", lua_tostring(state, -2));
@@ -111,6 +114,7 @@ bool parse_name(lua_State *L) {
     return true;
   }
   alloc_and_cpy_string((void **)&pb.name, lua_tostring(L, -1));
+
   return false;
 }
 
@@ -286,6 +290,8 @@ i32 run_build() {
       // Easy way to check if need to update exec instead of stat
       rebuild_exe = true;
     }
+
+    PIX_FREE(path);
   }
 
   if (rebuild_exe) {
@@ -305,6 +311,8 @@ i32 run_build() {
   } else {
     px_log(px_info, "No changes detected.");
   }
+
+  pix_da_free(args);
 
   return 0;
 }
