@@ -38,6 +38,7 @@ return {
 	},
 	-- CLFAGS will be apppended as is for now
 	cflags = {
+		"-std=c23",
 		"-ggdb",
 		"-fPIC",
 		"-fsanitize=address",

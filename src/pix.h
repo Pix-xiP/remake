@@ -80,25 +80,26 @@ typedef u8 b8;
 typedef u16 b16;
 typedef i32 b32;
 
-#if !defined(__cplusplus)
-#ifndef bool
-#define bool _Bool
-#endif
-#ifndef false
-#define false 0
-#endif
-#ifndef true
-#define true !false
-#endif
-#elif defined(__GNUC__) && !defined(__STRICT_ANSI__)
-/* Define _Bool as a GNU extension. */
-#define _Bool bool
-#if defined(__cplusplus) && __cplusplus < 201103L
-#define bool bool
-#define false false
-#define true true
-#endif
-#endif
+// NOTE: Include this if you're not using C23, which has 'bool' as a inbuilt keyword.
+// #if !defined(__cplusplus)
+// #ifndef bool
+// #define bool _Bool
+// #endif
+// #ifndef false
+// #define false 0
+// #endif
+// #ifndef true
+// #define true !false
+// #endif
+// #elif defined(__GNUC__) && !defined(__STRICT_ANSI__)
+// /* Define _Bool as a GNU extension. */
+// #define _Bool bool
+// #if defined(__cplusplus) && __cplusplus < 201103L
+// #define bool bool
+// #define false false
+// #define true true
+// #endif
+// #endif
 
 typedef char *string;
 
@@ -139,15 +140,16 @@ typedef char c32a __attribute__((vector_size(32), aligned(32)));
 #endif
 
 #ifndef pix_assert
-#include <signal.h>
+// #include <signal.h>
 #include <stdio.h>
 #define pix_assert(expr, msg)                                                                      \
   if (!(expr)) {                                                                                   \
     perror(#expr);                                                                                 \
     msg;                                                                                           \
-    kill(0, SIGTERM);                                                                              \
+    exit(1);                                                                                       \
   }
 #endif
+// kill(0, SIGTERM); <- figure out why fails instead of exit(1)?
 
 // SOME ENDIAN HELPERS! Replacement for noths etc
 // swap bytes in 16 bit value
@@ -564,82 +566,9 @@ PIX_DEF void *pix_calloc(i64 sz) {
   return (void *)mem;
 }
 
-// Temp include <string.h> to fix strlen problem for now.
 #include <string.h>
+// pix_strlen always includes an extra space for the null terminator.
 PIX_DEF i64 pix_strlen(const char *str) { return strlen((char *)str) + 1; }
-
-/* // Returns the length of a string including the null term. */
-/* PIX_DEF i64 pix_strlen(char *str) { return _pix_strlen((char *)str) + 1; } */
-
-// PIXTODO: This needs to be fixed - has a head overflow according to fsantise
-// addrs.
-PIX_DEF i64 _pix_strlen(const char *str) {
-  const char *char_ptr;
-  const u64 *longword_ptr;
-  u64 longword, himagic, lomagic;
-
-  // Handle the first few characters by reading one character at a time.
-  // Do this until CHAR_PTR is aligned on a longword boundary.
-  for (char_ptr = str; ((u64)char_ptr & (sizeof(longword) - 1)) != 0; ++char_ptr)
-    if (*char_ptr == '\0')
-      return char_ptr - str;
-
-  // All these elucidatory comments refer to 4-byte longwords,
-  // but the theory applies equally well to 8-byte longwords.
-
-  longword_ptr = (u64 *)char_ptr;
-
-  // Bits 31, 24, 16, and 8 of this number are zero.  Call these bits
-  //   the "holes."  Note that there is a hole just to the left of
-  //   each byte, with an extra at the end:
-  //
-  //   bits:  01111110 11111110 11111110 11111111
-  //   bytes: AAAAAAAA BBBBBBBB CCCCCCCC DDDDDDDD
-  //
-  //   The 1-bits make sure that carries propagate to the next 0-bit.
-  //   The 0-bits provide holes for carries to fall into.
-  himagic = 0x80808080L;
-  lomagic = 0x01010101L;
-  if (sizeof(longword) > 4) {
-    // 64-bit version of the magic.  */
-    // Do the shift in two steps to avoid a warning if long has 32 bits.
-    himagic = ((himagic << 16) << 16) | himagic;
-    lomagic = ((lomagic << 16) << 16) | lomagic;
-  }
-
-  // Instead of the traditional loop which tests each character,
-  // we will test a longword at a time.  The tricky part is testing
-  // if *any of the four* bytes in the longword in question are zero.
-  for (;;) {
-    longword = *longword_ptr++;
-
-    if (((longword - lomagic) & ~longword & himagic) != 0) {
-      /* Which of the bytes was the zero?  If none of them were, it was
-         a misfire; continue the search.  */
-
-      const char *cp = (const char *)(longword_ptr - 1);
-
-      if (cp[0] == 0)
-        return cp - str;
-      if (cp[1] == 0)
-        return cp - str + 1;
-      if (cp[2] == 0)
-        return cp - str + 2;
-      if (cp[3] == 0)
-        return cp - str + 3;
-      if (sizeof(longword) > 4) {
-        if (cp[4] == 0)
-          return cp - str + 4;
-        if (cp[5] == 0)
-          return cp - str + 5;
-        if (cp[6] == 0)
-          return cp - str + 6;
-        if (cp[7] == 0)
-          return cp - str + 7;
-      }
-    }
-  }
-}
 
 // --------------------
 // FILE MANIPULATION

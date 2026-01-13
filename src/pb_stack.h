@@ -14,7 +14,7 @@
 
 #define m_clone(dst, src)                                                                          \
   {                                                                                                \
-    dst = malloc(strlen(src) + 1);                                                                 \
+    dst = pix_calloc(strlen(src) + 1);                                                                 \
     memcpy(dst, src, strlen(src) + 1);                                                             \
   }
 
@@ -23,12 +23,12 @@ typedef struct _stack_t {
   u32 num_values;
 } pb_stack;
 
-static inline pb_stack *stack_create() { return malloc(sizeof(pb_stack)); }
+static inline pb_stack *stack_create() { return pix_calloc(sizeof(pb_stack)); }
 
 static inline void stack_init(pb_stack *stack) { memset(stack, 0, sizeof(pb_stack)); }
 
 static inline void stack_push(pb_stack *stack, const char *value) {
-  stack->value = realloc(stack->value, (sizeof(char *) * ++stack->num_values));
+  stack->value = PIX_REALLOC(stack->value, (sizeof(char *) * ++stack->num_values));
   m_clone(stack->value[stack->num_values - 1], value);
 }
 
@@ -44,7 +44,7 @@ static inline void stack_pop(pb_stack *stack) {
     return;
 
   if (stack->value[stack->num_values - 1])
-    free(stack->value[stack->num_values - 1]);
+    PIX_FREE(stack->value[stack->num_values - 1]);
 
   stack->value[stack->num_values - 1] = NULL;
   stack->num_values--;
@@ -53,17 +53,17 @@ static inline void stack_pop(pb_stack *stack) {
 static inline void stack_clean(pb_stack *stack) {
   for (u32 i = 0; i < stack->num_values; i++) {
     if (stack->value[i])
-      free(stack->value[i]);
+      PIX_FREE(stack->value[i]);
   }
 
   if (stack->value)
-    free(stack->value);
+    PIX_FREE(stack->value);
   stack_init(stack);
 }
 
 static inline void stack_destroy(pb_stack *stack) {
   stack_clean(stack);
-  free(stack);
+  PIX_FREE(stack);
 }
 
 static inline char *stack_flatten_ttb(pb_stack *stack, u32 *length) {
@@ -75,7 +75,7 @@ static inline char *stack_flatten_ttb(pb_stack *stack, u32 *length) {
   for (i32 i = stack->num_values - 1; i >= 0; i--) {
     *length += strlen(stack->value[i]) + 1;
   }
-  char *out = malloc(*length);
+  char *out = pix_calloc(*length);
   u32 caret = 0;
 
   for (i32 i = stack->num_values - 1; i >= 0; i--) {

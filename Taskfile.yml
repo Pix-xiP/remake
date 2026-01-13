@@ -21,19 +21,19 @@ tasks:
 
   bootstrap:
     cmds:
-      - rm ./pb_bootstrap
       # - "{{.COMPILER}} -o pb_bootstrap {{.CFLAGS}} {{.MIMALLOC}} {{.SRC}} {{.LIBS}}"
-      - "{{.COMPILER}} -o pb_bootstrap {{.CFLAGS}} {{.SRC}} {{.LIBS}}"
+      - "{{.COMPILER}} -std=c23 -o pb_bootstrap {{.CFLAGS}} {{.SRC}} {{.LIBS}}"
 
   remake:
     aliases:
       - rem
     silent: true
     cmds:
+      - task: clean
       - |
         mv ./pb ./pb.old
         ./pb.old
         if [ ! -f ./pb ]; then
           echo "Failed to build || nothing was changed, check output"
-          mv ./pb.old ./pb
+          mv ./pb.old ./p b
         fi

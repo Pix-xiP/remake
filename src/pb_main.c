@@ -1,3 +1,4 @@
+#define _GNU_SOURCE // allows for use of realpath.. should probably just implement it myself.
 #define PIX_IMPLEMENTATION
 #include "pix.h"
 
@@ -5,6 +6,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h> // fork
@@ -159,7 +161,10 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
     if (prefix)
       pix_da_append(da, prefix);
 
-    pix_da_append(da, lua_tostring(L, -1));
+    const char *val = NULL;
+    alloc_and_cpy_string((void **)&val, lua_tostring(L, -1));
+    pix_da_append(da, val);
+
     lua_pop(L, 1); // Pop value from stack
   }
   lua_pop(L, 1); // Pop nested table from stack
@@ -249,7 +254,6 @@ i32 run_build() {
       exit(1);
     }
 
-    // Yes this leaks but short lived so...
     char *obj = pix_calloc(pix_strlen(path));
     strcpy(obj, path);
     obj[strlen(path) - 1] = 'o';
