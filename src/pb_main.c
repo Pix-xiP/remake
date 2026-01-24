@@ -189,6 +189,7 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
              luat_to_string(lua_type(L, -1)));
 
       lua_pop(L, 2); // Pop value + table copy
+
       return true;
     }
     if (prefix)
@@ -203,6 +204,61 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
   lua_pop(L, 1); // Pop nested table from stack
 
   return false;
+}
+
+static bool is_c_like_ext(const char *ext, size_t ext_len) {
+  if (ext_len == 1)
+    return ext[0] == 'c' || ext[0] == 'C' || ext[0] == 'S' || ext[0] == 's';
+
+  if (ext_len == 2)
+    return memcmp(ext, "cc", 2) == 0 || memcmp(ext, "CC", 2) == 0;
+
+  if (ext_len == 3) {
+    return memcmp(ext, "cpp", 3) == 0 || memcmp(ext, "cxx", 3) == 0 || memcmp(ext, "CPP", 3) == 0 ||
+           memcmp(ext, "CXX", 3) == 0;
+  }
+
+  return false;
+}
+
+static char *make_obj_path(const char *path) {
+  size_t path_len = (size_t)pix_strlen(path) - 1;
+
+  const char *last_dot = strrchr(path, '.');
+  const char *last_slash = strrchr(path, '/');
+  bool replace_ext = false;
+
+  if (last_dot && (!last_slash || last_dot > last_slash)) {
+    const char *ext = last_dot + 1;
+    size_t ext_len = path_len - (size_t)(ext - path);
+
+    replace_ext = is_c_like_ext(ext, ext_len);
+  }
+
+  if (replace_ext) {
+    size_t base_len = (size_t)(last_dot - path);
+    size_t new_len = base_len + 2; // ".o"
+
+    char *obj = pix_calloc((i64)(new_len + 1));
+    pix_memcpy(obj, path, base_len);
+
+    obj[base_len] = '.';
+    obj[base_len + 1] = 'o';
+    obj[new_len] = '\0';
+
+    return obj;
+  }
+
+  size_t new_len = path_len + 2; // ".o"
+
+  char *obj = pix_calloc((i64)(new_len + 1));
+  pix_memcpy(obj, path, path_len);
+
+  obj[path_len] = '.';
+  obj[path_len + 1] = 'o';
+  obj[new_len] = '\0';
+
+  return obj;
 }
 
 void add_optimisation_flags() {
@@ -252,6 +308,7 @@ i32 exec_fork(DynamicArray *da) {
       exit(1);
     }
   }
+
   return status;
 }
 
@@ -287,9 +344,7 @@ i32 run_build() {
       exit(1);
     }
 
-    char *obj = pix_calloc(pix_strlen(path));
-    strcpy(obj, path);
-    obj[strlen(path) - 1] = 'o';
+    char *obj = make_obj_path(path);
 
     // px_log(19, "%s", obj);
     // px_log(19, "%s", path);
