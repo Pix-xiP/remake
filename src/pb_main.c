@@ -148,6 +148,34 @@ bool parse_compiler(lua_State *state) {
   return false;
 }
 
+bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *prefix);
+
+static bool parse_defines_table(lua_State *L) {
+  return parse_generic_table(L, &pb.defines, "defines", "-D");
+}
+
+static bool parse_cflags_table(lua_State *L) {
+  return parse_generic_table(L, &pb.cflags, "cflags", NULL);
+}
+
+static bool parse_src_files_table(lua_State *L) {
+  return parse_generic_table(L, &pb.files, "src_files", NULL);
+}
+
+static bool parse_inc_dirs_table(lua_State *L) {
+  return parse_generic_table(L, &pb.inc_dirs, "inc_dirs", "-I");
+}
+
+static bool parse_libs_table(lua_State *L) {
+  return parse_generic_table(L, &pb.libs, "libs", "-l");
+}
+
+static bool parse_lib_dirs_table(lua_State *L) {
+  return parse_generic_table(L, &pb.lib_dirs, "lib_dirs", "-L");
+}
+
+static bool parse_opt_level_field(lua_State *L) { return parse_opt_level(L) != 0; }
+
 bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *prefix) {
   if (lua_type(L, -1) != LUA_TTABLE) {
     px_log(px_err, "[LUA]: Expected a 'table' for '%s'", who);
@@ -338,46 +366,46 @@ i32 main(i32 argc, char **argv) {
       px_log(px_err, "[LUA]: Expected a 'table', got '%s'", lua_typename(L, lua_type(L, -1)));
       return 1;
     }
-    lua_gettable(L, -1);
+
     lua_pushnil(L);
+
     while (lua_next(L, -2) != 0) {
       // key is at idx -2 and value at -1
       if (lua_type(L, -2) == LUA_TSTRING) {
-        // px_log(px_dbg,"This is a string'd key: %s", lua_tostring(L, -2));
-        if (pix_strcmp("compiler", lua_tostring(L, -2)) == 0) {
-          if (parse_compiler(L))
-            return 1;
-        } else if (pix_strcmp("defines", lua_tostring(L, -2)) == 0) {
-          if (parse_generic_table(L, &pb.defines, "defines", "-D"))
-            return 1;
-        } else if (pix_strcmp("cflags", lua_tostring(L, -2)) == 0) {
-          if (parse_generic_table(L, &pb.cflags, "cflags", NULL))
-            return 1;
-        } else if (pix_strcmp("src_files", lua_tostring(L, -2)) == 0) {
-          if (parse_generic_table(L, &pb.files, "src_files", NULL))
-            return 1;
-        } else if (pix_strcmp("include_dirs", lua_tostring(L, -2)) == 0) {
-          if (parse_generic_table(L, &pb.inc_dirs, "inc_dirs", "-I"))
-            return 1;
-        } else if (pix_strcmp("include_libs", lua_tostring(L, -2)) == 0) {
-          if (parse_generic_table(L, &pb.libs, "libs", "-l"))
-            return 1;
-        } else if (pix_strcmp("library_dirs", lua_tostring(L, -2)) == 0) {
-          if (parse_generic_table(L, &pb.lib_dirs, "lib_dirs", "-L"))
-            return 1;
-        } else if (pix_strcmp("optimisation_level", lua_tostring(L, -2)) == 0) {
-          if (parse_opt_level(L))
-            return 1;
-        } else if (pix_strcmp("name", lua_tostring(L, -2)) == 0) {
-          if (parse_name(L))
-            return 1;
+        const char *key = lua_tostring(L, -2);
+        typedef bool (*field_handler_t)(lua_State *L);
+        typedef struct {
+          const char *key;
+          field_handler_t handler;
+        } field_handler_entry_t;
+
+        static const field_handler_entry_t field_handlers[] = {
+            {"compiler", parse_compiler},
+            {"defines", parse_defines_table},
+            {"cflags", parse_cflags_table},
+            {"src_files", parse_src_files_table},
+            {"include_dirs", parse_inc_dirs_table},
+            {"include_libs", parse_libs_table},
+            {"library_dirs", parse_lib_dirs_table},
+            {"optimisation_level", parse_opt_level_field},
+            {"name", parse_name},
+        };
+
+        bool handled = false;
+        for (size_t i = 0; i < (sizeof(field_handlers) / sizeof(field_handlers[0])); i++) {
+          if (pix_strcmp(field_handlers[i].key, key) == 0) {
+            if (field_handlers[i].handler(L))
+              return 1;
+            handled = true;
+            break;
+          }
         }
+
+        (void)handled;
       } else {
+        // given I should never allow keys I don't already know about, just continue?
         // px_log(px_dbg,"This is a number'd key: %lld", lua_tointeger(L, -2));
       }
-      // px_log(px_dbg,"With a value of: %s", luat_to_string(lua_type(L, -1)));
-      if (lua_type(L, -1) == LUA_TTABLE)
-        parse_nested_table(L);
 
       // Unless something gets added, this will always handle popping the last value.
       lua_pop(L, 1); // Pop total table from stack
