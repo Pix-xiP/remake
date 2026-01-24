@@ -20,8 +20,11 @@ PB_Builder pb = {0};
 PB_Context pc = {0};
 
 void print_da(size_t count, const char **items) {
-  for (size_t i = 0; i < count; i++)
+  for (size_t i = 0; i < count; i++) {
+    if (items[i] == NULL)
+      break;
     fprintf(stdout, "%s ", items[i]);
+  }
   printf("\n");
 }
 
