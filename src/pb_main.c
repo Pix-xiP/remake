@@ -187,6 +187,8 @@ bool parse_generic_table(lua_State *L, DynamicArray *da, const char *who, char *
     if (lua_type(L, -1) != LUA_TSTRING) {
       px_log(px_err, "[LUA]: defines must be 'string'. Found: '%s'",
              luat_to_string(lua_type(L, -1)));
+
+      lua_pop(L, 2); // Pop value + table copy
       return true;
     }
     if (prefix)
@@ -422,5 +424,6 @@ i32 main(i32 argc, char **argv) {
 
   // We close state here, because we use all the allocated strings lua has for us.
   lua_close(L);
+
   return 0;
 }
