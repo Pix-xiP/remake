@@ -241,17 +241,26 @@ static void copy_sanitized_path(char *dst, const char *src, size_t len) {
   }
 }
 
+static const char *skip_leading_path_markers(const char *path) {
+  while (path[0] == '.' && path[1] == '/')
+    path += 2;
+  while (*path == '/' || *path == '\\')
+    path++;
+  return path;
+}
+
 static char *make_obj_path(const char *path) {
   const char *build_dir = pc.build_dir ? pc.build_dir : "build";
-  size_t path_len = (size_t)pix_strlen(path) - 1;
+  const char *path_rooted = skip_leading_path_markers(path);
+  size_t path_len = (size_t)pix_strlen(path_rooted) - 1;
 
-  const char *last_dot = strrchr(path, '.');
-  const char *last_slash = strrchr(path, '/');
+  const char *last_dot = strrchr(path_rooted, '.');
+  const char *last_slash = strrchr(path_rooted, '/');
   bool replace_ext = false;
 
   if (last_dot && (!last_slash || last_dot > last_slash)) {
     const char *ext = last_dot + 1;
-    size_t ext_len = path_len - (size_t)(ext - path);
+    size_t ext_len = path_len - (size_t)(ext - path_rooted);
 
     replace_ext = is_c_like_ext(ext, ext_len);
   }
@@ -259,7 +268,7 @@ static char *make_obj_path(const char *path) {
   size_t dir_len = (size_t)pix_strlen(build_dir) - 1;
   size_t stem_len = path_len;
   if (replace_ext) {
-    stem_len = (size_t)(last_dot - path);
+    stem_len = (size_t)(last_dot - path_rooted);
   }
 
   if (replace_ext) {
@@ -268,7 +277,7 @@ static char *make_obj_path(const char *path) {
     char *obj = pix_calloc((i64)(new_len + 1));
     pix_memcpy(obj, build_dir, dir_len);
     obj[dir_len] = '/';
-    copy_sanitized_path(obj + dir_len + 1, path, stem_len);
+    copy_sanitized_path(obj + dir_len + 1, path_rooted, stem_len);
 
     obj[dir_len + 1 + stem_len] = '.';
     obj[dir_len + 1 + stem_len + 1] = 'o';
@@ -282,7 +291,7 @@ static char *make_obj_path(const char *path) {
   char *obj = pix_calloc((i64)(new_len + 1));
   pix_memcpy(obj, build_dir, dir_len);
   obj[dir_len] = '/';
-  copy_sanitized_path(obj + dir_len + 1, path, stem_len);
+  copy_sanitized_path(obj + dir_len + 1, path_rooted, stem_len);
 
   obj[dir_len + 1 + stem_len] = '.';
   obj[dir_len + 1 + stem_len + 1] = 'o';
@@ -372,14 +381,15 @@ i32 run_build() {
   for (size_t i = 0; i < pb.files.count; ++i) {
     // Store the current count of 'args' before adding file-specific arguments.
     size_t initial_args_count = args.count;
-    char *path = realpath(pb.files.items[i], NULL);
+    const char *path_spec = pb.files.items[i];
+    char *path = realpath(path_spec, NULL);
 
     if (path == NULL) {
       px_log(px_err, "Unable to find file: %s", pb.files.items[i]);
       exit(1);
     }
 
-    char *obj = make_obj_path(path);
+    char *obj = make_obj_path(path_spec);
 
     pix_da_append(&pb.obj_files, obj);
 
@@ -478,16 +488,11 @@ i32 main(i32 argc, char **argv) {
         } field_handler_entry_t;
 
         static const field_handler_entry_t field_handlers[] = {
-            {"compiler", parse_compiler},
-            {"defines", parse_defines_table},
-            {"cflags", parse_cflags_table},
-            {"src_files", parse_src_files_table},
-            {"include_dirs", parse_inc_dirs_table},
-            {"include_libs", parse_libs_table},
-            {"library_dirs", parse_lib_dirs_table},
-            {"optimisation_level", parse_opt_level_field},
-            {"build_dir", parse_build_dir},
-            {"name", parse_name},
+            {"compiler", parse_compiler},           {"defines", parse_defines_table},
+            {"cflags", parse_cflags_table},         {"src_files", parse_src_files_table},
+            {"include_dirs", parse_inc_dirs_table}, {"include_libs", parse_libs_table},
+            {"library_dirs", parse_lib_dirs_table}, {"optimisation_level", parse_opt_level_field},
+            {"build_dir", parse_build_dir},         {"name", parse_name},
         };
 
         bool handled = false;

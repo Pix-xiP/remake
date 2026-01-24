@@ -11,13 +11,7 @@ vars:
 tasks:
   build:
     cmds:
-      - task: clean
       - ./pb
-
-  clean:
-    dir: ./src
-    cmds:
-      - rm ./*.o
 
   bootstrap:
     cmds:
@@ -29,11 +23,10 @@ tasks:
       - rem
     silent: true
     cmds:
-      - task: clean
       - |
         mv ./pb ./pb.old
         ./pb.old
         if [ ! -f ./pb ]; then
           echo "Failed to build || nothing was changed, check output"
-          mv ./pb.old ./p b
+          mv ./pb.old ./pb
         fi
