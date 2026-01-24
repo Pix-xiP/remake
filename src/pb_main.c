@@ -95,22 +95,22 @@ i32 parse_opt_level(lua_State *L) {
   return 0;
 }
 
-void parse_nested_table(lua_State *state) {
-  return; // PIXTODO: Remove this when tackling the rest lmao.
-  lua_pushvalue(state, -1);
-  lua_pushnil(state);
-
-  while (lua_next(state, -2) != 0) {
-    if (lua_type(state, -2) == LUA_TSTRING) {
-      px_log(19, "    This is a string'd key: %s", lua_tostring(state, -2));
-    } else {
-      px_log(19, "    This is a number'd key: %lld", lua_tointeger(state, -2));
-    }
-    px_log(19, "    With a value of: %s", luat_to_string(lua_type(state, -1)));
-    lua_pop(state, 1); // Pop value from stack
-  }
-  lua_pop(state, 1); // Pop nested table from stack
-}
+// void parse_nested_table(lua_State *state) {
+//   return; // PIXTODO: Remove this when tackling the rest lmao.
+//   lua_pushvalue(state, -1);
+//   lua_pushnil(state);
+//
+//   while (lua_next(state, -2) != 0) {
+//     if (lua_type(state, -2) == LUA_TSTRING) {
+//       px_log(19, "    This is a string'd key: %s", lua_tostring(state, -2));
+//     } else {
+//       px_log(19, "    This is a number'd key: %lld", lua_tointeger(state, -2));
+//     }
+//     px_log(19, "    With a value of: %s", luat_to_string(lua_type(state, -1)));
+//     lua_pop(state, 1); // Pop value from stack
+//   }
+//   lua_pop(state, 1); // Pop nested table from stack
+// }
 
 bool parse_name(lua_State *L) {
   if (lua_type(L, -1) != LUA_TSTRING) {
@@ -120,6 +120,16 @@ bool parse_name(lua_State *L) {
   }
   alloc_and_cpy_string((void **)&pb.name, lua_tostring(L, -1));
 
+  return false;
+}
+
+static bool parse_build_dir(lua_State *L) {
+  if (lua_type(L, -1) != LUA_TSTRING) {
+    px_log(px_err, "[LUA]: build_dir expects 'string' found: '%s'",
+           luat_to_string(lua_type(L, -1)));
+    return true;
+  }
+  alloc_and_cpy_string((void **)&pc.build_dir, lua_tostring(L, -1));
   return false;
 }
 
@@ -221,7 +231,18 @@ static bool is_c_like_ext(const char *ext, size_t ext_len) {
   return false;
 }
 
+static void copy_sanitized_path(char *dst, const char *src, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    char c = src[i];
+    if (c == '/' || c == '\\' || c == ':')
+      dst[i] = '_';
+    else
+      dst[i] = c;
+  }
+}
+
 static char *make_obj_path(const char *path) {
+  const char *build_dir = pc.build_dir ? pc.build_dir : "build";
   size_t path_len = (size_t)pix_strlen(path) - 1;
 
   const char *last_dot = strrchr(path, '.');
@@ -235,27 +256,36 @@ static char *make_obj_path(const char *path) {
     replace_ext = is_c_like_ext(ext, ext_len);
   }
 
+  size_t dir_len = (size_t)pix_strlen(build_dir) - 1;
+  size_t stem_len = path_len;
   if (replace_ext) {
-    size_t base_len = (size_t)(last_dot - path);
-    size_t new_len = base_len + 2; // ".o"
+    stem_len = (size_t)(last_dot - path);
+  }
+
+  if (replace_ext) {
+    size_t new_len = dir_len + 1 + stem_len + 2; // dir + "/" + stem + ".o"
 
     char *obj = pix_calloc((i64)(new_len + 1));
-    pix_memcpy(obj, path, base_len);
+    pix_memcpy(obj, build_dir, dir_len);
+    obj[dir_len] = '/';
+    copy_sanitized_path(obj + dir_len + 1, path, stem_len);
 
-    obj[base_len] = '.';
-    obj[base_len + 1] = 'o';
+    obj[dir_len + 1 + stem_len] = '.';
+    obj[dir_len + 1 + stem_len + 1] = 'o';
     obj[new_len] = '\0';
 
     return obj;
   }
 
-  size_t new_len = path_len + 2; // ".o"
+  size_t new_len = dir_len + 1 + stem_len + 2; // dir + "/" + stem + ".o"
 
   char *obj = pix_calloc((i64)(new_len + 1));
-  pix_memcpy(obj, path, path_len);
+  pix_memcpy(obj, build_dir, dir_len);
+  obj[dir_len] = '/';
+  copy_sanitized_path(obj + dir_len + 1, path, stem_len);
 
-  obj[path_len] = '.';
-  obj[path_len + 1] = 'o';
+  obj[dir_len + 1 + stem_len] = '.';
+  obj[dir_len + 1 + stem_len + 1] = 'o';
   obj[new_len] = '\0';
 
   return obj;
@@ -316,6 +346,11 @@ i32 run_build() {
   DynamicArray args = {0};
   bool rebuild_exe = false;
 
+  if (!pc.build_dir) {
+    alloc_and_cpy_string((void **)&pc.build_dir, "build");
+  }
+  mkdir_if_not_exists(pc.build_dir);
+
   // Some default includes
   pix_da_append(&pb.inc_dirs, "-I.");
   pix_da_append(&pb.inc_dirs, "-I..");
@@ -346,13 +381,18 @@ i32 run_build() {
 
     char *obj = make_obj_path(path);
 
-    // px_log(19, "%s", obj);
-    // px_log(19, "%s", path);
-
     pix_da_append(&pb.obj_files, obj);
 
-    if (is_file_newer(path, obj)) {
+    char *dep = make_dep_path(obj);
+    bool rebuild_obj = is_file_newer(path, obj) || deps_require_rebuild(obj, dep);
+
+    if (rebuild_obj) {
       // Append file to rebuild.
+      // -MMD etc generate dependency ".d" files to check if header files have changed.
+      pix_da_append(&args, "-MMD");
+      pix_da_append(&args, "-MP");
+      pix_da_append(&args, "-MF");
+      pix_da_append(&args, dep);
       pix_da_append(&args, path);
 
       // Add out directory to same path as object
@@ -376,6 +416,7 @@ i32 run_build() {
       rebuild_exe = true;
     }
 
+    PIX_FREE(dep);
     PIX_FREE(path);
   }
 
@@ -445,6 +486,7 @@ i32 main(i32 argc, char **argv) {
             {"include_libs", parse_libs_table},
             {"library_dirs", parse_lib_dirs_table},
             {"optimisation_level", parse_opt_level_field},
+            {"build_dir", parse_build_dir},
             {"name", parse_name},
         };
 
