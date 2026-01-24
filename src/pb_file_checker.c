@@ -27,6 +27,28 @@ bool does_file_exist(const char *f) {
   return true;
 }
 
+char *make_config_stamp_path(const char *build_dir) {
+  const char *stamp_name = ".config.stamp";
+  size_t dir_len = (size_t)pix_strlen(build_dir) - 1;
+  size_t name_len = (size_t)pix_strlen(stamp_name) - 1;
+  size_t new_len = dir_len + 1 + name_len;
+
+  char *out = pix_calloc((i64)(new_len + 1));
+  pix_memcpy(out, build_dir, dir_len);
+  out[dir_len] = '/';
+  pix_memcpy(out + dir_len + 1, stamp_name, name_len);
+  out[new_len] = '\0';
+  return out;
+}
+
+bool write_empty_file(const char *path) {
+  FILE *fp = fopen(path, "wb");
+  if (!fp)
+    return true;
+  fclose(fp);
+  return false;
+}
+
 static void normalize_dep_file(char *buf, size_t len) {
   for (size_t i = 0; i + 1 < len; i++) {
     if (buf[i] == '\\' && buf[i + 1] == '\n') {

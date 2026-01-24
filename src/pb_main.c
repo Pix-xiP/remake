@@ -354,11 +354,18 @@ i32 exec_fork(DynamicArray *da) {
 i32 run_build() {
   DynamicArray args = {0};
   bool rebuild_exe = false;
+  bool force_rebuild = false;
 
   if (!pc.build_dir) {
     alloc_and_cpy_string((void **)&pc.build_dir, "build");
   }
   mkdir_if_not_exists(pc.build_dir);
+
+  char *config_stamp = make_config_stamp_path(pc.build_dir);
+  if (is_file_newer(DEFAULT_FILE_NAME, config_stamp)) {
+    px_log(px_info, "Config changed: %s", DEFAULT_FILE_NAME);
+    force_rebuild = true;
+  }
 
   // Some default includes
   pix_da_append(&pb.inc_dirs, "-I.");
@@ -394,7 +401,7 @@ i32 run_build() {
     pix_da_append(&pb.obj_files, obj);
 
     char *dep = make_dep_path(obj);
-    bool rebuild_obj = is_file_newer(path, obj) || deps_require_rebuild(obj, dep);
+    bool rebuild_obj = force_rebuild || is_file_newer(path, obj) || deps_require_rebuild(obj, dep);
 
     if (rebuild_obj) {
       // Append file to rebuild.
@@ -444,10 +451,14 @@ i32 run_build() {
 
     px_log(px_info, "Compiling executable");
     exec_fork(&args);
+    if (write_empty_file(config_stamp)) {
+      px_log(px_warn, "Failed to write config stamp: %s", config_stamp);
+    }
   } else {
     px_log(px_info, "No changes detected.");
   }
 
+  PIX_FREE(config_stamp);
   pix_da_free(args);
 
   return 0;
