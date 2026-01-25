@@ -4,6 +4,7 @@
 #include "pix.h"
 
 #define DEFAULT_FILE_NAME "build.lua"
+#define DEFAULT_BUILD_DIR "./build"
 
 typedef enum Optimisation {
   none = 0,

@@ -357,6 +357,9 @@ i32 run_build() {
   bool force_rebuild = false;
 
   if (!pc.build_dir) {
+    px_log(px_info,
+           "No custom build directory found in '%s'. Setting build directory to default '%s'",
+           DEFAULT_FILE_NAME, DEFAULT_BUILD_DIR);
     alloc_and_cpy_string((void **)&pc.build_dir, "build");
   }
   mkdir_if_not_exists(pc.build_dir);
