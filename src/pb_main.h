@@ -6,7 +6,7 @@
 #define DEFAULT_FILE_NAME "build.lua"
 #define DEFAULT_BUILD_DIR "./build"
 
-typedef enum Optimisation {
+typedef enum optimisation_t {
   none = 0,
   debug,
   debug_optimised,
@@ -14,37 +14,36 @@ typedef enum Optimisation {
   regular,
   size,
   extreme,
-} Optimisation;
+} optimisation_t;
 
-typedef struct PB_Builder {
+typedef enum target_kind_t {
+  target_kind_exe = 0,
+} target_kind_t;
 
+typedef struct build_target_t {
   const char *compiler;
-  const char *build_path;
   const char *name;
+  target_kind_t kind;
+  optimisation_t op_lvl;
 
   DynamicArray lib_dirs;
   DynamicArray libs;
-  DynamicArray files;
+  DynamicArray sources;
   DynamicArray cflags;
   DynamicArray defines;
   DynamicArray ldflags;
   DynamicArray inc_dirs;
 
   DynamicArray obj_files;
+} build_target_t;
 
-} PB_Builder;
-
-typedef struct PB_Context {
+typedef struct build_config_t {
   const char *install_dir;
   const char *build_dir;
 
-  Optimisation op_lvl;
-
-  bool is_exe;
-  const char *exe;
-
-  bool is_lib;
-  const char *lib;
-} PB_Context;
+  build_target_t *targets;
+  size_t target_count;
+  size_t target_capacity;
+} build_config_t;
 
 #endif
