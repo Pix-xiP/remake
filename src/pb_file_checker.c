@@ -160,6 +160,10 @@ bool deps_require_rebuild(const char *obj_path, const char *dep_path) {
     if (tok[0] == '\0')
       continue;
 
+    size_t tok_len = (size_t)pix_strlen(tok) - 1;
+    if (tok_len > 0 && tok[tok_len - 1] == ':')
+      continue;
+
     if (is_file_newer(tok, obj_path)) {
       PIX_FREE(buf);
 
