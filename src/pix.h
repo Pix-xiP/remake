@@ -59,6 +59,7 @@ typedef unsigned int uint;
 // typedef unsigned int u32;
 // #else
 // Use STDINT definitions for portability
+
 #include <stdint.h>
 typedef int8_t i8;
 typedef uint8_t u8;

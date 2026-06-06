@@ -2,7 +2,6 @@
 -- identify the compiler even better?
 -- locate dependencies too?
 
--- This is like, wayyy more reliable, totes!
 local function compiler_exists(compiler)
 	return os.execute("command -v " .. compiler .. " >/dev/null 2>&1")
 end
@@ -23,55 +22,74 @@ local function find_compiler()
 		end
 	end
 
-	-- Like, what do we even do now? This is a total disaster!
-	io.stderr:write("[FATAL]: Could not find a C compiler! Install one, bestie!\n")
+	-- Like, what do we even do now?
+	io.stderr:write("[FATAL]: Could not find a C compiler!\n")
 	os.exit(1)
 end
 
 return {
-	-- compiler = "cc",
-	compiler = find_compiler(),
-	name = "pb",
-	-- This will be prefix'd with -D
-	defines = {
-		"DEBUG",
-	},
-	-- CLFAGS will be apppended as is for now
-	cflags = {
-		"-std=c23",
-		"-ggdb",
-		"-fPIC",
-		"-fsanitize=address",
-	},
-	-- As it says on the tin.
-	src_files = {
-		"src/pb_file_checker.c",
-		"src/pb_main.c",
-		"src/pb_parsing.c",
-	},
-	-- Directories that could contain header files to include.
-	include_dirs = {
-		"./src", -- Probs dont need up here
-		"./lua-5.4.6/install/include",
-		"./mimalloc/include",
-	},
-	-- Libraries to link against! (-l<lib>)
-	include_libs = {
-		"lua",
-		"m",
-	},
-	library_dirs = {
-		"./lua-5.4.6/install/lib",
-	},
-	-- None, Basic, Default, Extreme, debug, debug_optimisied, size
-	optimisation_level = "default",
-
-	--------------------
-	-- UNIMPLEMENTED YET
-	-- Directory to put build files in? Maybe .o files?
 	build_dir = "./build",
-	-- Directory to install the binary to after the fact?
 	install = {
 		directory = "./bin",
+	},
+	targets = {
+		{
+			name = "pb",
+			kind = "exe",
+			compiler = find_compiler(),
+			defines = {
+				"DEBUG",
+			},
+			cflags = {
+				"-std=c23",
+				"-ggdb",
+				"-fPIC",
+				"-fsanitize=address",
+			},
+			sources = {
+				"src/pb_file_checker.c",
+				"src/pb_main.c",
+				"src/pb_parsing.c",
+			},
+			include_dirs = {
+				"./src",
+				"./lua-5.4.6/install/include",
+				"./mimalloc/include",
+			},
+			libs = {
+				"lua",
+				"m",
+			},
+			library_dirs = {
+				"./lua-5.4.6/install/lib",
+			},
+			optimisation_level = "default",
+		},
+		{
+			name = "remake_test",
+			kind = "exe",
+			compiler = find_compiler(),
+			defines = {
+				"DEBUG",
+			},
+			cflags = {
+				"-ggdb",
+				"-fPIC",
+			},
+			sources = {
+				"test/src/test.c",
+				"test/src/extended.c",
+				"mimalloc/src/static.c",
+			},
+			include_dirs = {
+				"test/hdr",
+				"test/temp",
+				"./mimalloc/include",
+			},
+			libs = {
+				"pthread",
+			},
+			optimisation_level = "default",
+		},
 	},
 }
