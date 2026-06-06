@@ -65,5 +65,31 @@ return {
 			},
 			optimisation_level = "default",
 		},
+		{
+			name = "remake_test",
+			kind = "exe",
+			compiler = find_compiler(),
+			defines = {
+				"DEBUG",
+			},
+			cflags = {
+				"-ggdb",
+				"-fPIC",
+			},
+			sources = {
+				"test/src/test.c",
+				"test/src/extended.c",
+				"mimalloc/src/static.c",
+			},
+			include_dirs = {
+				"test/hdr",
+				"test/temp",
+				"./mimalloc/include",
+			},
+			libs = {
+				"pthread",
+			},
+			optimisation_level = "default",
+		},
 	},
 }
